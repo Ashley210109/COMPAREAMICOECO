@@ -8,5 +8,5 @@
   <rect x="0" y="8" width="48" height="24" rx="12" fill="url(#g)"/>
   <circle cx="16" cy="20" r="6" fill="#fff" opacity="0.9"/>
   <circle cx="32" cy="20" r="6" fill="#fff" opacity="0.9"/>
-  <text x="58" y="26" font-family="Inter, Arial, Helvetica" font-weight="700" font-size="18" fill="#0f1e5a">Station Road</text>
+  <text x="58" y="26" font-family="Inter, Arial, Helvetica" font-weight="700" font-size="18" fill="#0f1e5a">Amico Eco</text>
 </svg>
