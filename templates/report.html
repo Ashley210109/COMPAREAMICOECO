@@ -1,111 +1,146 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<title>Station Road Comparison — Local</title>
-<style>
-body { font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; }
-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
-h1 { margin:0; font-size: 22px; }
-.small { color:#666; font-size: 12px; }
-.grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
-.card { border:1px solid #ddd; border-radius:12px; padding:12px; }
-.kv { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed #eee; }
-.kv:last-child { border-bottom:none; }
-.badge { padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid #bbb; }
-.badge.positive { background:#e6f7e6; border-color:#8dd28d; }
-.badge.negative { background:#fdeaea; border-color:#efa6a6; }
-.badge.neutral { background:#f3f3f3; border-color:#cfcfcf; }
-table { width:100%; border-collapse:collapse; margin-top:8px; }
-th, td { border:1px solid #ddd; padding:8px; text-align:left; vertical-align:top; }
-th { background:#f8f8f8; }
-.section-title { margin-top:22px; }
-</style>
-</head>
-<body>
-<header>
-  <div>
-    <h1>Station Road — Comparison</h1>
-    <div class="small">Generated: {{ now }} | Local prototype</div>
-  </div>
-  <div><strong>Client Logo</strong></div>
-</header>
-<div style="margin:12px 0; display:flex; gap:10px;">
-  <form method="post" action="/pdf"><button type="submit">Download PDF</button></form>
-  <button onclick="window.print()">Print…</button>
-</div>
-<div style="display:flex; gap:24px; margin-bottom:10px">
-  <div><strong>Address:</strong> {{ header.address or "" }}</div>
-  <div><strong>UPRN:</strong> {{ header.uprn or "" }}</div>
-  <div><strong>PRE Date:</strong> {{ header.pre_date or (pre.summary.process_date or "") }}</div>
-  <div><strong>POST Date:</strong> {{ header.post_date or (post.summary.process_date or "") }}</div>
-</div>
-<div style="white-space:pre-wrap; border:1px solid #eee; padding:8px; border-radius:8px; margin-bottom:12px">
-  <strong>Notes:</strong>
-{{ header.notes or "" }}
-</div>
+{% extends "base.html" %}
+{% block title %}Report • Station Road{% endblock %}
+{% block content %}
 
-
-<div class="grid">
-  <div class="card">
-    <h3>Current SAP</h3>
-    <div class="kv"><span>PRE</span><span>{{ pre.summary.sap_current_band or "" }} {{ pre.summary.sap_current or "" }}</span></div>
-    <div class="kv"><span>POST</span><span>{{ post.summary.sap_current_band or "" }} {{ post.summary.sap_current or "" }}</span></div>
-    {% set sc = diff.sap_change %}
-    <div class="kv"><span>Change</span>
-      <span class="badge {% if sc is not none and sc>0 %}positive{% elif sc is not none and sc<0 %}negative{% else %}neutral{% endif %}">{{ "+" ~ sc if sc and sc>0 else (sc if sc is not none else "") }}</span></div>
-  </div>
-  <div class="card">
-    <h3>Current EI</h3>
-    <div class="kv"><span>PRE</span><span>{{ pre.summary.ei_current_band or "" }} {{ pre.summary.ei_current or "" }}</span></div>
-    <div class="kv"><span>POST</span><span>{{ post.summary.ei_current_band or "" }} {{ post.summary.ei_current or "" }}</span></div>
-    {% set ec = diff.ei_change %}
-    <div class="kv"><span>Change</span>
-      <span class="badge {% if ec is not none and ec>0 %}positive{% elif ec is not none and ec<0 %}negative{% else %}neutral{% endif %}">{{ "+" ~ ec if ec and ec>0 else (ec if ec is not none else "") }}</span></div>
-  </div>
-  <div class="card">
-    <h3>Fuel Bill (est.)</h3>
-    <div class="kv"><span>PRE</span><span>£{{ '{:,.0f}'.format(pre.summary.fuel_bill) if pre.summary.fuel_bill is not none }}</span></div>
-    <div class="kv"><span>POST</span><span>£{{ '{:,.0f}'.format(post.summary.fuel_bill) if post.summary.fuel_bill is not none }}</span></div>
-    {% set fb = diff.fuel_bill_change %}
-    <div class="kv"><span>Change</span>
-      <span class="badge {% if fb is not none and fb>0 %}negative{% elif fb is not none and fb<0 %}positive{% else %}neutral{% endif %}">{{ (("+" if fb>0 else "") ~ (fb|round(0))) if fb is not none }}</span></div>
+<!-- Header strip -->
+<div class="sr-report-header mb-4 shadow-sm">
+  <div class="row g-3 align-items-center">
+    <div class="col-md">
+      <div class="sr-eyebrow text-uppercase">Comparison Report</div>
+      <h1 class="h4 mb-0">{{ header.address or "—" }}</h1>
+      <div class="text-muted small mt-1">UPRN: {{ header.uprn or "—" }}</div>
+    </div>
+    <div class="col-auto text-end">
+      <div class="sr-chip">PRE: {{ header.pre_date or "—" }}</div>
+      <div class="sr-chip">POST: {{ header.post_date or "—" }}</div>
+    </div>
   </div>
 </div>
 
-<h2 class="section-title">Recommendations — Status Change</h2>
-<table>
-  <thead><tr><th>Measure</th><th>PRE</th><th>POST</th></tr></thead>
-  <tbody>
-  {% for name, vals in diff.recs.items() %}
-    <tr><td>{{ name }}</td><td>{{ vals.pre or "—" }}</td><td>{{ vals.post or "—" }}</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+{% if header.notes %}
+  <div class="alert alert-info shadow-sm">
+    <strong>Notes:</strong><div class="mt-1">{{ header.notes }}</div>
+  </div>
+{% endif %}
 
-<h2 class="section-title">Key Areas (m²)</h2>
-<table>
-  <thead><tr><th>Area</th><th>PRE</th><th>POST</th><th>Δ</th></tr></thead>
-  <tbody>
-  {% set keys = (pre.measures.keys() | list) + (post.measures.keys() | list) %}
-  {% for k in keys | unique %}
-    {% set a = pre.measures.get(k) %}
-    {% set b = post.measures.get(k) %}
-    {% set d = (b - a) if (a is not none and b is not none) else none %}
-    <tr><td>{{ k }}</td><td>{{ a if a is not none else "" }}</td><td>{{ b if b is not none else "" }}</td><td>{{ (("+" if d>0 else "") ~ (d|round(2))) if d is not none else "" }}</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+<!-- KPI Grid -->
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="sr-kpi card shadow-sm">
+      <div class="card-body">
+        <div class="sr-kpi-label">Current SAP</div>
+        <div class="sr-kpi-values">
+          <div><span class="sr-pill sr-pill-muted">PRE</span> {{ pre.summary.sap_current_band or "?" }} {{ pre.summary.sap_current or "?" }}</div>
+          <div><span class="sr-pill sr-pill-success">POST</span> {{ post.summary.sap_current_band or "?" }} {{ post.summary.sap_current or "?" }}</div>
+        </div>
+        <div class="sr-kpi-delta {{ 'text-success' if diff.sap_change and diff.sap_change>0 else 'text-danger' if diff.sap_change and diff.sap_change<0 else 'text-muted' }}">
+          Change: {{ diff.sap_change if diff.sap_change is not none else "—" }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="sr-kpi card shadow-sm">
+      <div class="card-body">
+        <div class="sr-kpi-label">Current EI</div>
+        <div class="sr-kpi-values">
+          <div><span class="sr-pill sr-pill-muted">PRE</span> {{ pre.summary.ei_current_band or "?" }} {{ pre.summary.ei_current or "?" }}</div>
+          <div><span class="sr-pill sr-pill-success">POST</span> {{ post.summary.ei_current_band or "?" }} {{ post.summary.ei_current or "?" }}</div>
+        </div>
+        <div class="sr-kpi-delta {{ 'text-success' if diff.ei_change and diff.ei_change>0 else 'text-danger' if diff.ei_change and diff.ei_change<0 else 'text-muted' }}">
+          Change: {{ diff.ei_change if diff.ei_change is not none else "—" }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="sr-kpi card shadow-sm">
+      <div class="card-body">
+        <div class="sr-kpi-label">Fuel Bill (est.)</div>
+        <div class="sr-kpi-values">
+          <div><span class="sr-pill sr-pill-muted">PRE</span> £{{ pre.summary.fuel_bill if pre.summary.fuel_bill is not none else "—" }}</div>
+          <div><span class="sr-pill sr-pill-success">POST</span> £{{ post.summary.fuel_bill if post.summary.fuel_bill is not none else "—" }}</div>
+        </div>
+        <div class="sr-kpi-delta {{ 'text-success' if diff.fuel_bill_change and diff.fuel_bill_change<0 else 'text-danger' if diff.fuel_bill_change and diff.fuel_bill_change>0 else 'text-muted' }}">
+          Change: {{ "{:+.1f}".format(diff.fuel_bill_change) if diff.fuel_bill_change is not none else "—" }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-<h2 class="section-title">Identifiers</h2>
-<table>
-  <tbody>
-    <tr><th>PRE Survey Ref</th><td>{{ pre.summary.survey_reference or "" }}</td><th>POST Survey Ref</th><td>{{ post.summary.survey_reference or "" }}</td></tr>
-    <tr><th>PRE Ref Number</th><td>{{ pre.summary.reference_number or "" }}</td><th>POST Ref Number</th><td>{{ post.summary.reference_number or "" }}</td></tr>
-    <tr><th>PRE Process Date</th><td>{{ pre.summary.process_date or "" }}</td><th>POST Process Date</th><td>{{ post.summary.process_date or "" }}</td></tr>
-  </tbody>
-</table>
+<!-- Recommendations -->
+<div class="card sr-card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <h2 class="h5 mb-0">Recommendations</h2>
+      <span class="badge bg-soft-primary text-primary">{{ diff.recs|length }} measures</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Measure</th>
+            <th class="text-center">PRE</th>
+            <th class="text-center">POST</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name, row in diff.recs.items() %}
+          <tr>
+            <td class="fw-500">{{ name }}</td>
+            <td class="text-center"><span class="sr-badge">{{ row.pre or "—" }}</span></td>
+            <td class="text-center"><span class="sr-badge">{{ row.post or "—" }}</span></td>
+          </tr>
+          {% endfor %}
+          {% if diff.recs|length == 0 %}
+            <tr><td colspan="3" class="text-center text-muted">No recommendations detected.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    <div class="small text-muted">Tip: “Flat roof insulation” & “Room-in-roof insulation” must appear verbatim in the PDFs.</div>
+  </div>
+</div>
 
-<p class="small">Local prototype. Use your browser's Print → Save as PDF to export.</p>
-<p><a href="/">← back</a></p>
-</body></html>
+<!-- Areas -->
+<div class="card sr-card shadow-sm">
+  <div class="card-body">
+    <h2 class="h5 mb-3">Key Areas (m²)</h2>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Area</th>
+            <th class="text-center">PRE</th>
+            <th class="text-center">POST</th>
+            <th class="text-center">Δ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for label, vals in diff.areas.items() %}
+          <tr>
+            <td class="fw-500">{{ label }}</td>
+            <td class="text-center">{{ vals.pre if vals.pre is not none else "—" }}</td>
+            <td class="text-center">{{ vals.post if vals.post is not none else "—" }}</td>
+            <td class="text-center fw-600 {{ 'text-success' if vals.delta and vals.delta>0 else 'text-danger' if vals.delta and vals.delta<0 else 'text-muted' }}">
+              {{ "{:+.2f}".format(vals.delta) if vals.delta is not none else "—" }}
+            </td>
+          </tr>
+          {% endfor %}
+          {% if diff.areas|length == 0 %}
+          <tr><td colspan="4" class="text-center text-muted">No area metrics detected.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    <div class="d-print-none mt-3 d-flex gap-2">
+      <a href="/" class="btn btn-ghost">← Back</a>
+      <form method="post" action="/pdf"><button class="btn btn-primary">Download PDF</button></form>
+      <button class="btn btn-outline-primary" onclick="window.print()">Print</button>
+    </div>
+    <div class="text-center text-muted small mt-3">Use <em>Print → Save as PDF</em> for a branded export.</div>
+  </div>
+</div>
+
+{% endblock %}
