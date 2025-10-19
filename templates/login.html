@@ -1,11 +1,24 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><title>Login</title>
-<style>body{font-family:system-ui;margin:48px}input{padding:10px;margin:6px 0;width:240px}</style>
-</head><body>
-  <h2>Station Road Comparator — Login</h2>
-  {% if error %}<p style="color:#c00">{{error}}</p>{% endif %}
-  <form method="post" action="/login">
-    <input type="password" name="password" placeholder="Password" autofocus />
-    <div><button type="submit">Login</button></div>
-  </form>
-</body></html>
+{% extends "base.html" %}
+{% block title %}Sign in • Station Road{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-4">
+    <div class="card sr-card shadow-xl">
+      <div class="card-body p-4">
+        <h1 class="h4 fw-bold mb-3">Welcome back</h1>
+        <p class="text-muted mb-4">Sign in to access the EPC Comparator.</p>
+        {% if error %}
+          <div class="alert alert-danger py-2">{{ error }}</div>
+        {% endif %}
+        <form method="post" action="/login">
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control form-control-lg" name="password" placeholder="••••••••" required>
+          </div>
+          <button class="btn btn-primary w-100 btn-lg">Sign in</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
