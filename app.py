@@ -42,7 +42,11 @@ app.add_middleware(
     allow_methods=["*"],
 )
 
-app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
+# --- Static files (create folder if missing so Render won't crash) ---
+static_dir = BASE / "static"
+static_dir.mkdir(exist_ok=True)            # <— ensures the directory exists
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
 
 # -------------------------------------------------------
 # Helpers
