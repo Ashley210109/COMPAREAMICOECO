@@ -29,7 +29,7 @@ APP_SAFE = os.environ.get("APP_SAFE", "0") == "1"
 logger = logging.getLogger("station_road")
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="Station Road • EPC Comparator")
+app = FastAPI(title="Amico Eco • EPC Comparator")
 app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SESSION_SECRET", "dev-secret-change-me"))
 app.add_middleware(
     CORSMiddleware,
