@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Station Road Comparison — Local</title>
+<style>
+body { font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; }
+header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
+h1 { margin:0; font-size: 22px; }
+.small { color:#666; font-size: 12px; }
+.grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
+.card { border:1px solid #ddd; border-radius:12px; padding:12px; }
+.kv { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed #eee; }
+.kv:last-child { border-bottom:none; }
+.badge { padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid #bbb; }
+.badge.positive { background:#e6f7e6; border-color:#8dd28d; }
+.badge.negative { background:#fdeaea; border-color:#efa6a6; }
+.badge.neutral { background:#f3f3f3; border-color:#cfcfcf; }
+table { width:100%; border-collapse:collapse; margin-top:8px; }
+th, td { border:1px solid #ddd; padding:8px; text-align:left; vertical-align:top; }
+th { background:#f8f8f8; }
+.section-title { margin-top:22px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Station Road — Comparison</h1>
+    <div class="small">Generated: {{ now }} | Local prototype</div>
+  </div>
+  <div><strong>Client Logo</strong></div>
+</header>
+<div style="margin:12px 0; display:flex; gap:10px;">
+  <form method="post" action="/pdf"><button type="submit">Download PDF</button></form>
+  <button onclick="window.print()">Print…</button>
+</div>
+<div style="display:flex; gap:24px; margin-bottom:10px">
+  <div><strong>Address:</strong> {{ header.address or "" }}</div>
+  <div><strong>UPRN:</strong> {{ header.uprn or "" }}</div>
+  <div><strong>PRE Date:</strong> {{ header.pre_date or (pre.summary.process_date or "") }}</div>
+  <div><strong>POST Date:</strong> {{ header.post_date or (post.summary.process_date or "") }}</div>
+</div>
+<div style="white-space:pre-wrap; border:1px solid #eee; padding:8px; border-radius:8px; margin-bottom:12px">
+  <strong>Notes:</strong>
+{{ header.notes or "" }}
+</div>
+
+
+<div class="grid">
+  <div class="card">
+    <h3>Current SAP</h3>
+    <div class="kv"><span>PRE</span><span>{{ pre.summary.sap_current_band or "" }} {{ pre.summary.sap_current or "" }}</span></div>
+    <div class="kv"><span>POST</span><span>{{ post.summary.sap_current_band or "" }} {{ post.summary.sap_current or "" }}</span></div>
+    {% set sc = diff.sap_change %}
+    <div class="kv"><span>Change</span>
+      <span class="badge {% if sc is not none and sc>0 %}positive{% elif sc is not none and sc<0 %}negative{% else %}neutral{% endif %}">{{ "+" ~ sc if sc and sc>0 else (sc if sc is not none else "") }}</span></div>
+  </div>
+  <div class="card">
+    <h3>Current EI</h3>
+    <div class="kv"><span>PRE</span><span>{{ pre.summary.ei_current_band or "" }} {{ pre.summary.ei_current or "" }}</span></div>
+    <div class="kv"><span>POST</span><span>{{ post.summary.ei_current_band or "" }} {{ post.summary.ei_current or "" }}</span></div>
+    {% set ec = diff.ei_change %}
+    <div class="kv"><span>Change</span>
+      <span class="badge {% if ec is not none and ec>0 %}positive{% elif ec is not none and ec<0 %}negative{% else %}neutral{% endif %}">{{ "+" ~ ec if ec and ec>0 else (ec if ec is not none else "") }}</span></div>
+  </div>
+  <div class="card">
+    <h3>Fuel Bill (est.)</h3>
+    <div class="kv"><span>PRE</span><span>£{{ '{:,.0f}'.format(pre.summary.fuel_bill) if pre.summary.fuel_bill is not none }}</span></div>
+    <div class="kv"><span>POST</span><span>£{{ '{:,.0f}'.format(post.summary.fuel_bill) if post.summary.fuel_bill is not none }}</span></div>
+    {% set fb = diff.fuel_bill_change %}
+    <div class="kv"><span>Change</span>
+      <span class="badge {% if fb is not none and fb>0 %}negative{% elif fb is not none and fb<0 %}positive{% else %}neutral{% endif %}">{{ (("+" if fb>0 else "") ~ (fb|round(0))) if fb is not none }}</span></div>
+  </div>
+</div>
+
+<h2 class="section-title">Recommendations — Status Change</h2>
+<table>
+  <thead><tr><th>Measure</th><th>PRE</th><th>POST</th></tr></thead>
+  <tbody>
+  {% for name, vals in diff.recs.items() %}
+    <tr><td>{{ name }}</td><td>{{ vals.pre or "—" }}</td><td>{{ vals.post or "—" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2 class="section-title">Key Areas (m²)</h2>
+<table>
+  <thead><tr><th>Area</th><th>PRE</th><th>POST</th><th>Δ</th></tr></thead>
+  <tbody>
+  {% set keys = (pre.measures.keys() | list) + (post.measures.keys() | list) %}
+  {% for k in keys | unique %}
+    {% set a = pre.measures.get(k) %}
+    {% set b = post.measures.get(k) %}
+    {% set d = (b - a) if (a is not none and b is not none) else none %}
+    <tr><td>{{ k }}</td><td>{{ a if a is not none else "" }}</td><td>{{ b if b is not none else "" }}</td><td>{{ (("+" if d>0 else "") ~ (d|round(2))) if d is not none else "" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2 class="section-title">Identifiers</h2>
+<table>
+  <tbody>
+    <tr><th>PRE Survey Ref</th><td>{{ pre.summary.survey_reference or "" }}</td><th>POST Survey Ref</th><td>{{ post.summary.survey_reference or "" }}</td></tr>
+    <tr><th>PRE Ref Number</th><td>{{ pre.summary.reference_number or "" }}</td><th>POST Ref Number</th><td>{{ post.summary.reference_number or "" }}</td></tr>
+    <tr><th>PRE Process Date</th><td>{{ pre.summary.process_date or "" }}</td><th>POST Process Date</th><td>{{ post.summary.process_date or "" }}</td></tr>
+  </tbody>
+</table>
+
+<p class="small">Local prototype. Use your browser's Print → Save as PDF to export.</p>
+<p><a href="/">← back</a></p>
+</body></html>

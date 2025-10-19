@@ -1,0 +1,22 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Upload</title>
+<style>
+body{font-family:system-ui;margin:32px}
+.card{border:1px solid #ddd;border-radius:12px;padding:16px;max-width:600px}
+</style>
+</head><body>
+  <h2>Station Road Comparator — Upload</h2>
+  <div class="card">
+    <form action="/compare" method="post" enctype="multipart/form-data">
+      <div><label>Address: <input type="text" name="address" style="width:420px"></label></div>
+      <div><label>UPRN: <input type="text" name="uprn"></label></div>
+      <div><label>PRE Process Date (dd/mm/yyyy): <input type="text" name="pre_date"></label></div>
+      <div><label>POST Process Date (dd/mm/yyyy): <input type="text" name="post_date"></label></div>
+      <div><label>Notes:<br><textarea name="notes" rows="4" style="width:100%"></textarea></label></div>
+      <div><label>PRE Site Notes (PDF): <input type="file" name="pre" accept="application/pdf" required></label></div>
+      <div><label>POST Site Notes (PDF): <input type="file" name="post" accept="application/pdf" required></label></div>
+      <div style="margin-top:10px"><button type="submit">Generate Comparison</button></div>
+    </form>
+  </div>
+  <p><a href="/logout">Logout</a></p>
+</body></html>

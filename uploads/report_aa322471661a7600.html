@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Station Road Comparison — Local</title>
+<style>
+body { font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; }
+header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
+h1 { margin:0; font-size: 22px; }
+.small { color:#666; font-size: 12px; }
+.grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
+.card { border:1px solid #ddd; border-radius:12px; padding:12px; }
+.kv { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed #eee; }
+.kv:last-child { border-bottom:none; }
+.badge { padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid #bbb; }
+.badge.positive { background:#e6f7e6; border-color:#8dd28d; }
+.badge.negative { background:#fdeaea; border-color:#efa6a6; }
+.badge.neutral { background:#f3f3f3; border-color:#cfcfcf; }
+table { width:100%; border-collapse:collapse; margin-top:8px; }
+th, td { border:1px solid #ddd; padding:8px; text-align:left; vertical-align:top; }
+th { background:#f8f8f8; }
+.section-title { margin-top:22px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Station Road — Comparison</h1>
+    <div class="small">Generated: 2025-10-16 15:22 UTC | Local prototype</div>
+  </div>
+  <div><strong>Client Logo</strong></div>
+</header>
+<div style="margin:12px 0; display:flex; gap:10px;">
+  <form method="post" action="/pdf"><button type="submit">Download PDF</button></form>
+  <button onclick="window.print()">Print…</button>
+</div>
+<div style="display:flex; gap:24px; margin-bottom:10px">
+  <div><strong>Address:</strong> Unit 1</div>
+  <div><strong>UPRN:</strong> 12345</div>
+  <div><strong>PRE Date:</strong> 15/02/1988</div>
+  <div><strong>POST Date:</strong> 15/02/2025</div>
+</div>
+<div style="white-space:pre-wrap; border:1px solid #eee; padding:8px; border-radius:8px; margin-bottom:12px">
+  <strong>Notes:</strong>
+x 
+</div>
+
+
+<div class="grid">
+  <div class="card">
+    <h3>Current SAP</h3>
+    <div class="kv"><span>PRE</span><span>E 52</span></div>
+    <div class="kv"><span>POST</span><span>C 71</span></div>
+    
+    <div class="kv"><span>Change</span>
+      <span class="badge positive">+19</span></div>
+  </div>
+  <div class="card">
+    <h3>Current EI</h3>
+    <div class="kv"><span>PRE</span><span>E 46</span></div>
+    <div class="kv"><span>POST</span><span>C 71</span></div>
+    
+    <div class="kv"><span>Change</span>
+      <span class="badge positive">+25</span></div>
+  </div>
+  <div class="card">
+    <h3>Fuel Bill (est.)</h3>
+    <div class="kv"><span>PRE</span><span>£2,179</span></div>
+    <div class="kv"><span>POST</span><span>£1,220</span></div>
+    
+    <div class="kv"><span>Change</span>
+      <span class="badge positive">-959.0</span></div>
+  </div>
+</div>
+
+<h2 class="section-title">Recommendations — Status Change</h2>
+<table>
+  <thead><tr><th>Measure</th><th>PRE</th><th>POST</th></tr></thead>
+  <tbody>
+  
+    <tr><td>Cavity wall insulation</td><td>Not Applicable</td><td>Not Applicable</td></tr>
+  
+    <tr><td>Draught proofing</td><td>Already Installed</td><td>Already Installed</td></tr>
+  
+    <tr><td>Flat roof insulation</td><td>Recommended</td><td>Sap Increase Too Small</td></tr>
+  
+    <tr><td>Floor insulation (solid floor)</td><td>Recommended</td><td>Sap Increase Too Small</td></tr>
+  
+    <tr><td>Heating controls for wet central heating system</td><td>Sap Increase Too Small</td><td>Already Installed</td></tr>
+  
+    <tr><td>Loft insulation</td><td>Not Applicable</td><td>Not Applicable</td></tr>
+  
+    <tr><td>Low energy lighting</td><td>Already Installed</td><td>Already Installed</td></tr>
+  
+    <tr><td>Room-in-roof insulation</td><td>Recommended</td><td>Not Applicable</td></tr>
+  
+  </tbody>
+</table>
+
+<h2 class="section-title">Key Areas (m²)</h2>
+<table>
+  <thead><tr><th>Area</th><th>PRE</th><th>POST</th><th>Δ</th></tr></thead>
+  <tbody>
+  
+  
+    
+    
+    
+    <tr><td>Room(s) in Roof</td><td>24.26</td><td>24.25</td><td>-0.01</td></tr>
+  
+    
+    
+    
+    <tr><td>1st Floor</td><td>28.05</td><td>28.05</td><td>0.0</td></tr>
+  
+    
+    
+    
+    <tr><td>2nd Floor</td><td>0.0</td><td>0.0</td><td>0.0</td></tr>
+  
+  </tbody>
+</table>
+
+<h2 class="section-title">Identifiers</h2>
+<table>
+  <tbody>
+    <tr><th>PRE Survey Ref</th><td>002814</td><th>POST Survey Ref</th><td>002815</td></tr>
+    <tr><th>PRE Ref Number</th><td>CW96-0001-002814</td><th>POST Ref Number</th><td>CW96-0001-002815</td></tr>
+    <tr><th>PRE Process Date</th><td>15/02/1988</td><th>POST Process Date</th><td>15/02/2025</td></tr>
+  </tbody>
+</table>
+
+<p class="small">Local prototype. Use your browser's Print → Save as PDF to export.</p>
+<p><a href="/">← back</a></p>
+</body></html>

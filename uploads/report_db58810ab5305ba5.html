@@ -1,0 +1,318 @@
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  :root{
+    --bg:#0b0e14; --fg:#eaeef8; --muted:#9aa3b2; --card:#121620; --accent:#6aa0ff; --border:#202637;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  .container{max-width:1100px;margin:24px auto;padding:0 16px}
+  .nav{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.3)}
+  .brand{font-weight:700}
+  .nav-right a{margin-left:16px}
+  .footer{padding:16px;border-top:1px solid var(--border);opacity:.7;margin-top:40px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0}
+  h1{margin:8px 0 12px}
+  h2{margin:0 0 8px}
+  label{display:block;margin-bottom:6px;font-size:14px;color:var(--muted)}
+  input[type="text"],input[type="password"],input[type="file"],textarea{
+    width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:#0f1320;color:#fff
+  }
+  textarea{resize:vertical}
+  button{
+    background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600
+  }
+  button:hover{opacity:.95}
+  .error{color:#ff7a7a;margin-top:8px}
+  .hint{color:var(--muted)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media (max-width:900px){.grid-3{grid-template-columns:1fr}.grid-2{grid-template-columns:1fr}}
+  .table{width:100%;border-collapse:collapse;margin-top:12px}
+  .table th,.table td{border-bottom:1px solid var(--border);padding:10px;text-align:left}
+  .table th{color:var(--muted);font-weight:600}
+  .muted{color:var(--muted)}
+  .value{font-size:18px;font-weight:700}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:16px}
+  .header .right{display:flex;gap:8px;align-items:center}
+  .link-back{margin-left:10px}
+  .mt-4{margin-top:6px}
+  .stat{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+  @media print{
+    .nav,.footer,.link-back,form[action="/pdf"],button[onclick]{display:none !important}
+    body{background:#fff;color:#000}
+    .card{border-color:#ddd}
+  }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="brand">Station Road Comparator</div>
+    <div class="nav-right">
+      <a href="/">Home</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+  <main class="container">
+    
+
+<header class="header">
+  <div>
+    <div><strong>Address:</strong> Unit 1</div>
+    <div><strong>UPRN:</strong> 12345</div>
+    
+    <div>
+      <strong>PRE Date:</strong> 15/02/2025 |
+      <strong>POST Date:</strong> 15/02/1987
+    </div>
+    
+    
+    <div class="mt-4"><strong>Notes:</strong> Test</div>
+    
+  </div>
+  <div class="right">
+    <div><strong>Generated:</strong> 2025-10-17 08:36 UTC</div>
+    <form method="post" action="/pdf" style="display:inline;">
+      <button type="submit">Download PDF</button>
+    </form>
+    <button onclick="window.print()">Print</button>
+    <a href="/" class="link-back">← back</a>
+  </div>
+</header>
+
+<section class="grid-3">
+  <div class="card">
+    <h2>Current SAP</h2>
+    <div class="stat">
+      <div>
+        <div class="muted">PRE</div>
+        <div class="value">E 52</div>
+      </div>
+      <div>
+        <div class="muted">POST</div>
+        <div class="value">C 71</div>
+      </div>
+      <div>
+        <div class="muted">Change</div>
+        <div class="value">19</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Current EI</h2>
+    <div class="stat">
+      <div>
+        <div class="muted">PRE</div>
+        <div class="value">E 46</div>
+      </div>
+      <div>
+        <div class="muted">POST</div>
+        <div class="value">C 71</div>
+      </div>
+      <div>
+        <div class="muted">Change</div>
+        <div class="value">25</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Fuel Bill (est.)</h2>
+    <div class="stat">
+      <div>
+        <div class="muted">PRE</div>
+        <div class="value">£2179</div>
+      </div>
+      <div>
+        <div class="muted">POST</div>
+        <div class="value">£1220</div>
+      </div>
+      <div>
+        <div class="muted">Change</div>
+        <div class="value">
+          
+            -959
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Recommendations — Status Change</h2>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Measure</th>
+        <th>PRE</th>
+        <th>POST</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+      <tr>
+        <td>Cavity wall insulation</td>
+        <td>Not Applicable</td>
+        <td>Not Applicable</td>
+      </tr>
+      
+      <tr>
+        <td>Draught proofing</td>
+        <td>Already Installed</td>
+        <td>Already Installed</td>
+      </tr>
+      
+      <tr>
+        <td>Flat roof insulation</td>
+        <td>Recommended</td>
+        <td>SAP Increase Too Small</td>
+      </tr>
+      
+      <tr>
+        <td>Floor insulation (solid floor)</td>
+        <td>Recommended</td>
+        <td>SAP Increase Too Small</td>
+      </tr>
+      
+      <tr>
+        <td>Heating controls for wet central heating system</td>
+        <td>SAP Increase Too Small</td>
+        <td>Already Installed</td>
+      </tr>
+      
+      <tr>
+        <td>Loft insulation</td>
+        <td>Not Applicable</td>
+        <td>Not Applicable</td>
+      </tr>
+      
+      <tr>
+        <td>Low energy lighting</td>
+        <td>Already Installed</td>
+        <td>Already Installed</td>
+      </tr>
+      
+      <tr>
+        <td>Room-in-roof insulation</td>
+        <td>Recommended</td>
+        <td>Not Applicable</td>
+      </tr>
+      
+      
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Key Areas (m²)</h2>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Area</th>
+        <th>PRE</th>
+        <th>POST</th>
+        <th>Δ</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+      
+      
+      
+      <tr>
+        <td>Room(s) in Roof</td>
+        <td>24.26</td>
+        <td>24.25</td>
+        <td>
+          
+          -0.01
+          
+        </td>
+      </tr>
+      
+      
+      
+      <tr>
+        <td>1st Floor</td>
+        <td>28.05</td>
+        <td>28.05</td>
+        <td>
+          
+          0.00
+          
+        </td>
+      </tr>
+      
+      
+      
+      <tr>
+        <td>Ground Floor</td>
+        <td>—</td>
+        <td>—</td>
+        <td>
+          —
+        </td>
+      </tr>
+      
+      
+      
+      <tr>
+        <td>2nd Floor</td>
+        <td>0.00</td>
+        <td>0.00</td>
+        <td>
+          
+          0.00
+          
+        </td>
+      </tr>
+      
+      
+      
+      <tr>
+        <td>Total Floor Area</td>
+        <td>—</td>
+        <td>—</td>
+        <td>
+          —
+        </td>
+      </tr>
+      
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Identifiers</h2>
+  <div class="grid-2">
+    <div>
+      <div><strong>PRE Survey Ref</strong> — 002814</div>
+      <div><strong>PRE Ref Number</strong> — CW96-0001-002814</div>
+      <div><strong>PRE Process Date</strong> — 15/02/2025</div>
+    </div>
+    <div>
+      <div><strong>POST Survey Ref</strong> — 002815</div>
+      <div><strong>POST Ref Number</strong> — CW96-0001-002815</div>
+      <div><strong>POST Process Date</strong> — 15/02/1987</div>
+    </div>
+  </div>
+</section>
+
+<p class="muted">Use <b>Download PDF</b> or browser's <b>Print → Save as PDF</b>.</p>
+
+
+  </main>
+  <footer class="footer">
+    <div>© 2025-10-17 08:36 UTC</div>
+  </footer>
+</body>
+</html>

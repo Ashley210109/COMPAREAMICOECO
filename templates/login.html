@@ -1,0 +1,11 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Login</title>
+<style>body{font-family:system-ui;margin:48px}input{padding:10px;margin:6px 0;width:240px}</style>
+</head><body>
+  <h2>Station Road Comparator — Login</h2>
+  {% if error %}<p style="color:#c00">{{error}}</p>{% endif %}
+  <form method="post" action="/login">
+    <input type="password" name="password" placeholder="Password" autofocus />
+    <div><button type="submit">Login</button></div>
+  </form>
+</body></html>
