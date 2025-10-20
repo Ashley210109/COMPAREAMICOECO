@@ -1,81 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Compare EPC PDFs • Station Road{% endblock %}
 {% block content %}
+<div class="card">
+  <h1 class="card-title">Compare PRE vs POST EPC PDFs</h1>
+  <p class="muted">Upload both EPC/EPR PDFs and optionally add header details for the report. We’ll parse the numbers, recommendations, and site notes, then generate a styled comparison with QA flags.</p>
 
-<div class="row g-4">
-  <div class="col-xl-8">
-    <div class="card sr-card shadow-sm">
-      <div class="card-body p-4">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-          <h1 class="h4 mb-0">New Comparison</h1>
-          <span class="badge bg-soft-primary text-primary">Secure</span>
-        </div>
-        <form method="post" action="/compare" enctype="multipart/form-data" id="compareForm">
-          <div class="row g-3">
-            <div class="col-md-8">
-              <label class="form-label">Address (optional)</label>
-              <input name="address" class="form-control" placeholder="e.g., 221B Baker Street, NW1 6XE">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">UPRN (optional)</label>
-              <input name="uprn" class="form-control" placeholder="1234567890">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">PRE Process Date (optional)</label>
-              <input name="pre_date" class="form-control" placeholder="DD/MM/YYYY">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">POST Process Date (optional)</label>
-              <input name="post_date" class="form-control" placeholder="DD/MM/YYYY">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">PRE PDF</label>
-              <input type="file" name="pre" class="form-control sr-file" accept="application/pdf" required>
-              <div class="sr-file-hint small text-muted mt-1">Attach official EPC (PRE)</div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">POST PDF</label>
-              <input type="file" name="post" class="form-control sr-file" accept="application/pdf" required>
-              <div class="sr-file-hint small text-muted mt-1">Attach official EPC (POST)</div>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label">Notes (optional)</label>
-              <textarea name="notes" class="form-control" rows="4" placeholder="Anything the client should know..."></textarea>
-            </div>
-          </div>
-
-          <div class="d-flex gap-2 mt-4">
-            <button class="btn btn-primary btn-lg" id="submitBtn">
-              <span class="spinner-border spinner-border-sm me-2 d-none" id="submitSpinner"></span>
-              Compare PDFs
-            </button>
-            <button type="reset" class="btn btn-ghost">Reset</button>
-          </div>
-        </form>
-      </div>
+  <form class="form" method="post" action="/compare" enctype="multipart/form-data">
+    <div class="grid-2">
+      <label class="field">
+        <span>PRE PDF</span>
+        <input type="file" name="pre" accept="application/pdf" required>
+      </label>
+      <label class="field">
+        <span>POST PDF</span>
+        <input type="file" name="post" accept="application/pdf" required>
+      </label>
     </div>
-  </div>
 
-  <aside class="col-xl-4">
-    <div class="card sr-card shadow-sm">
-      <div class="card-body p-4">
-        <h2 class="h6 text-uppercase text-muted">Quality Checklist</h2>
-        <ul class="sr-list mt-3">
-          <li>Use official EPC PDFs (unaltered).</li>
-          <li>Optional: set PRE/POST dates here to override the PDFs.</li>
-          <li>Room-in-roof / Flat roof statuses rely on exact PDF phrases.</li>
-        </ul>
-      </div>
+    <div class="grid-2">
+      <label class="field">
+        <span>Address</span>
+        <input type="text" name="address" placeholder="e.g., 10 Station Road, Manchester">
+      </label>
+      <label class="field">
+        <span>UPRN</span>
+        <input type="text" name="uprn" placeholder="e.g., 100021900000">
+      </label>
     </div>
-    <div class="card sr-gradient shadow-sm mt-3">
-      <div class="card-body p-4">
-        <div class="h6 text-white text-uppercase mb-2">Tip</div>
-        <div class="text-white-75">Export a branded PDF with the button on the results page.</div>
-      </div>
+
+    <div class="grid-2">
+      <label class="field">
+        <span>PRE Process Date</span>
+        <input type="text" name="pre_date" placeholder="dd/mm/yyyy">
+      </label>
+      <label class="field">
+        <span>POST Process Date</span>
+        <input type="text" name="post_date" placeholder="dd/mm/yyyy">
+      </label>
     </div>
-  </aside>
+
+    <label class="field">
+      <span>Notes (shown at top of report)</span>
+      <textarea name="notes" rows="3" placeholder="Optional notes for the client…"></textarea>
+    </label>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Generate Comparison</button>
+    </div>
+  </form>
 </div>
-
 {% endblock %}
