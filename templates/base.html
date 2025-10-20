@@ -1,42 +1,35 @@
-{% set app_name = "Amico Eco" %}
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}EPC Comparator · {{ app_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}Amico Eco • EPC Comparator{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="/static/logo.svg">
 </head>
-<body>
-  <!-- Top brand bar -->
-  <header class="brandbar">
-    <div class="container flex between center">
-      <div class="brand flex center gap-12">
-        <img src="{{ url_for('static', path='logo.svg') }}" alt="Logo" class="logo">
-        <div class="brand-copy">
-          <div class="brand-title">{{ app_name }}</div>
-          <div class="brand-sub">EPC Comparator</div>
-        </div>
+<body class="bg">
+  <header class="topbar no-print">
+    <div class="brand">
+      <img src="/static/logo.svg" alt="Amico Eco" class="logo">
+      <div class="brand-text">
+        <div class="brand-title">Amico Eco</div>
+        <div class="brand-sub">EPC Comparator</div>
       </div>
-      <nav class="nav">
-        <a class="btn ghost" href="/">Home</a>
-        {% if request.session.get('authed') %}
-          <a class="btn outline" href="/logout">Logout</a>
-        {% endif %}
-      </nav>
     </div>
+    <nav class="nav">
+      <a class="chip" href="/">Home</a>
+      <a class="chip ghost" href="/logout">Logout</a>
+    </nav>
   </header>
 
-  <!-- Page body -->
-  <main class="page container">
+  <main class="container">
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="container">
-      © Amico Eco UK. All rights reserved.
-    </div>
+  <footer class="footer no-print">
+    © Amico Eco UK. All rights reserved.
   </footer>
+
+  <script src="/static/app.js"></script>
 </body>
 </html>
