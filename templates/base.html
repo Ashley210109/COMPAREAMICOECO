@@ -1,37 +1,42 @@
+{% set app_name = "Amico Eco" %}
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>{{ title or "Amico Eco • EPC Comparator" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
- <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+  <title>{% block title %}EPC Comparator · {{ app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 </head>
 <body>
-<header class="site-header">
-  <div class="wrap">
-    <div class="brand">
-      <div class="brand-mark">AE</div>
-      <div class="brand-text">
-        <div class="brand-title">Amico Eco</div>
-        <div class="brand-sub">EPC Comparator</div>
+  <!-- Top brand bar -->
+  <header class="brandbar">
+    <div class="container flex between center">
+      <div class="brand flex center gap-12">
+        <img src="{{ url_for('static', path='logo.svg') }}" alt="Logo" class="logo">
+        <div class="brand-copy">
+          <div class="brand-title">{{ app_name }}</div>
+          <div class="brand-sub">EPC Comparator</div>
+        </div>
       </div>
+      <nav class="nav">
+        <a class="btn ghost" href="/">Home</a>
+        {% if request.session.get('authed') %}
+          <a class="btn outline" href="/logout">Logout</a>
+        {% endif %}
+      </nav>
     </div>
-    <nav class="nav">
-      <a href="/">Home</a>
-      <a href="/logout">Logout</a>
-    </nav>
-  </div>
-</header>
+  </header>
 
-<main class="container">
-  {% block content %}{% endblock %}
-</main>
+  <!-- Page body -->
+  <main class="page container">
+    {% block content %}{% endblock %}
+  </main>
 
-<footer class="site-footer">
-  <div class="wrap">
-    <span>© Amico Eco. All rights reserved.</span>
-    <span class="muted">v1.0</span>
-  </div>
-</footer>
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      © Amico Eco UK. All rights reserved.
+    </div>
+  </footer>
 </body>
 </html>
