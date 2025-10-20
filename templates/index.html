@@ -1,51 +1,66 @@
 {% extends "base.html" %}
+{% block title %}Compare PRE vs POST · Amico Eco{% endblock %}
 {% block content %}
-<div class="card">
-  <h1 class="card-title">Compare PRE vs POST EPC PDFs</h1>
-  <p class="muted">Upload both EPC/EPR PDFs and optionally add header details for the report. We’ll parse the numbers, recommendations, and site notes, then generate a styled comparison with QA flags.</p>
 
-  <form class="form" method="post" action="/compare" enctype="multipart/form-data">
-    <div class="grid-2">
-      <label class="field">
-        <span>PRE PDF</span>
-        <input type="file" name="pre" accept="application/pdf" required>
+{% if not request.session.get('authed') %}
+  <div class="card max-560 center">
+    <h1 class="h2">Welcome back</h1>
+    <p class="muted">Sign in to access the EPC Comparator.</p>
+    <form method="post" action="/login" class="form vgap-16">
+      <label class="label">Password
+        <input type="password" name="password" placeholder="Key" class="input">
       </label>
-      <label class="field">
-        <span>POST PDF</span>
-        <input type="file" name="post" accept="application/pdf" required>
-      </label>
-    </div>
+      <button class="btn primary wide">Sign in</button>
+    </form>
+  </div>
+{% else %}
 
-    <div class="grid-2">
-      <label class="field">
-        <span>Address</span>
-        <input type="text" name="address" placeholder="e.g., 10 Station Road, Manchester">
-      </label>
-      <label class="field">
-        <span>UPRN</span>
-        <input type="text" name="uprn" placeholder="e.g., 100021900000">
-      </label>
-    </div>
+  <div class="stack vgap-16">
+    <h1 class="h2">Compare PRE vs POST EPC PDFs</h1>
+    <p class="muted">Upload both EPC/EPR PDFs and (optionally) add header details. We’ll parse them, compare, and produce a styled report with QA flags.</p>
 
-    <div class="grid-2">
-      <label class="field">
-        <span>PRE Process Date</span>
-        <input type="text" name="pre_date" placeholder="dd/mm/yyyy">
-      </label>
-      <label class="field">
-        <span>POST Process Date</span>
-        <input type="text" name="post_date" placeholder="dd/mm/yyyy">
-      </label>
-    </div>
+    <form method="post" action="/compare" enctype="multipart/form-data" class="card form-grid">
+      <div>
+        <label class="label">PRE PDF
+          <input type="file" name="pre" accept="application/pdf" class="input">
+        </label>
+      </div>
+      <div>
+        <label class="label">POST PDF
+          <input type="file" name="post" accept="application/pdf" class="input">
+        </label>
+      </div>
+      <div class="span-2">
+        <label class="label">Address
+          <input type="text" name="address" placeholder="e.g., 10 Station Road, Manchester" class="input">
+        </label>
+      </div>
+      <div>
+        <label class="label">UPRN
+          <input type="text" name="uprn" placeholder="e.g., 100021900000" class="input">
+        </label>
+      </div>
+      <div>
+        <label class="label">PRE Process Date
+          <input type="text" name="pre_date" placeholder="dd/mm/yyyy" class="input">
+        </label>
+      </div>
+      <div>
+        <label class="label">POST Process Date
+          <input type="text" name="post_date" placeholder="dd/mm/yyyy" class="input">
+        </label>
+      </div>
+      <div class="span-2">
+        <label class="label">Notes (shown at top of report)
+          <textarea name="notes" rows="3" placeholder="Optional notes for the client…" class="input"></textarea>
+        </label>
+      </div>
 
-    <label class="field">
-      <span>Notes (shown at top of report)</span>
-      <textarea name="notes" rows="3" placeholder="Optional notes for the client…"></textarea>
-    </label>
+      <div class="span-2 right">
+        <button class="btn primary">Generate Comparison</button>
+      </div>
+    </form>
+  </div>
 
-    <div class="actions">
-      <button class="btn btn-primary" type="submit">Generate Comparison</button>
-    </div>
-  </form>
-</div>
+{% endif %}
 {% endblock %}
