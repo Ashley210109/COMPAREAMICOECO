@@ -1,24 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Sign in • Amico Eco{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-6 col-lg-4">
-    <div class="card sr-card shadow-xl">
-      <div class="card-body p-4">
-        <h1 class="h4 fw-bold mb-3">Welcome back</h1>
-        <p class="text-muted mb-4">Sign in to access the EPC Comparator.</p>
-        {% if error %}
-          <div class="alert alert-danger py-2">{{ error }}</div>
-        {% endif %}
-        <form method="post" action="/login">
-          <div class="mb-3">
-            <label class="form-label">Password</label>
-            <input type="password" class="form-control form-control-lg" name="password" placeholder="Key" required>
-          </div>
-          <button class="btn btn-primary w-100 btn-lg">Sign in</button>
-        </form>
-      </div>
-    </div>
-  </div>
+<div class="card card-narrow">
+  <h1 class="card-title">Sign in</h1>
+  <form method="post" action="/login" class="form">
+    {% if error %}
+      <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    <label class="field">
+      <span>Password</span>
+      <input type="password" name="password" placeholder="Enter password" required>
+    </label>
+    <button class="btn btn-primary" type="submit">Enter</button>
+  </form>
 </div>
 {% endblock %}
