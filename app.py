@@ -38,7 +38,7 @@ app.add_middleware(
     allow_headers=["*"],
     allow_methods=["*"],
 )
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 
 # ====== Helpers: parsing core ======
 STAT_ORDER = [
