@@ -299,10 +299,16 @@ def compare_site_notes(pre: dict, post: dict) -> list[dict]:
         if m: recs[name] = m.group(1).strip().title()
     return recs
 
-def gather(path: Path):
+def gather(path: Path):def gather(path: Path):
     raw = extract_text(path)
-    text = "\n".join([norm_ws(x) for x in raw.splitlines()])
-    return {"summary": parse_summary(text), "measures": parse_numeric_measures(text), "recs": parse_recommendations(text)}
+    text = "\n".join(norm_lines(raw))
+    return {
+        "summary": parse_summary(text),
+        "measures": parse_numeric_measures(text),
+        "recs": parse_recommendations(text),
+        "notes": parse_site_notes(text),   # <— add this line
+        "raw_text": text,                  # optional, handy for debugging
+    }
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
