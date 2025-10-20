@@ -1,16 +1,18 @@
 {% extends "base.html" %}
+{% block title %}Sign in • Amico Eco{% endblock %}
 {% block content %}
-<div class="card card-narrow">
-  <h1 class="card-title">Sign in</h1>
+<div class="card xl">
+  <h1>Welcome back</h1>
+  <p class="muted">Sign in to access the EPC Comparator.</p>
+
+  {% if error %}
+    <div class="alert error">{{ error }}</div>
+  {% endif %}
+
   <form method="post" action="/login" class="form">
-    {% if error %}
-      <div class="alert alert-error">{{ error }}</div>
-    {% endif %}
-    <label class="field">
-      <span>Password</span>
-      <input type="password" name="password" placeholder="Enter password" required>
-    </label>
-    <button class="btn btn-primary" type="submit">Enter</button>
+    <label class="label">Password</label>
+    <input type="password" name="password" class="input" placeholder="Key" required>
+    <button class="btn primary w-full">Sign in</button>
   </form>
 </div>
 {% endblock %}
