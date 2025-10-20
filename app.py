@@ -6,38 +6,55 @@ from fastapi import FastAPI, Request, UploadFile, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from PyPDF2 import PdfReader
 from xhtml2pdf import pisa
 
+# ====== Paths & setup ======
 BASE = Path(__file__).parent
 TEMPLATES_DIR = BASE / "templates"
 STATIC_DIR = BASE / "static"
 UPLOADS_DIR = BASE / "uploads"
 
-TEMPLATES_DIR.mkdir(exist_ok=True)
-STATIC_DIR.mkdir(exist_ok=True)
-UPLOADS_DIR.mkdir(exist_ok=True)
+TEMPLATES_DIR.mkdir(exist_ok=True, parents=True)
+(STATIC_DIR / "css").mkdir(exist_ok=True, parents=True)
+UPLOADS_DIR.mkdir(exist_ok=True, parents=True)
 
 TEMPLATES = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
 APP_SAFE = os.environ.get("APP_SAFE", "0") == "1"
 
-logger = logging.getLogger("station_road")
+logger = logging.getLogger("amicoeco")
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Amico Eco • EPC Comparator")
 app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SESSION_SECRET", "dev-secret-change-me"))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_headers=["*"], allow_methods=["*"],
+    allow_origins=["*"],
+    allow_headers=["*"],
+    allow_methods=["*"],
 )
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-STAT_ORDER = ["already installed","not applicable","sap increase too small","recommended"]
+# ====== Helpers: parsing core ======
+STAT_ORDER = [
+    "already installed",
+    "not applicable",
+    "sap increase too small",
+    "recommended",
+]
+
+AREA_LABELS = [
+    "Room(s) in Roof","Rooms in Roof","Room in Roof",
+    "1st Floor","First Floor",
+    "Ground Floor",
+    "2nd Floor","Second Floor",
+    "Total Floor Area",
+]
 
 def norm_ws(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "")).strip()
@@ -47,7 +64,7 @@ def is_authed(request: Request) -> bool:
 
 def safe_error(e: Exception) -> HTMLResponse:
     tb = traceback.format_exc()
-    logger.error("Error:\n%s", tb)
+    logger.error("Unhandled error:\n%s", tb)
     return HTMLResponse(f"<h2>Internal error</h2><pre>{html_mod.escape(tb)}</pre>", status_code=500)
 
 def extract_text(path: Path) -> str:
@@ -61,28 +78,29 @@ def extract_text(path: Path) -> str:
     lines = [norm_ws(ln) for ln in "\n".join(pages).splitlines()]
     return "\n".join([ln for ln in lines if ln])
 
-def pick_status(pre_text: str, post_text: str):
-    def choose(raw: str) -> str:
-        txt = (raw or "").lower()
-        for token in STAT_ORDER:
-            if token in txt:
-                return token.title()
-        return raw.strip() if raw else ""
-    return choose(pre_text), choose(post_text)
+def norm_lines(s: str):
+    lines = [re.sub(r"\s+", " ", ln).strip() for ln in s.splitlines()]
+    return [ln for ln in lines if ln]
 
 def _search(pat: str, text: str, cast=str, default=None):
     m = re.search(pat, text, re.IGNORECASE)
-    if not m: return default
+    if not m:
+        return default
     val = m.group(1).strip()
-    try: return cast(val)
-    except Exception: return val
+    try:
+        return cast(val)
+    except Exception:
+        return val
 
 def _search_float(pat: str, text: str):
     m = re.search(pat, text, re.IGNORECASE)
-    if not m: return None
+    if not m:
+        return None
     v = m.group(1).replace(",", "")
-    try: return float(v)
-    except Exception: return None
+    try:
+        return float(v)
+    except Exception:
+        return None
 
 def parse_summary(text: str):
     d = {}
@@ -103,28 +121,47 @@ def parse_summary(text: str):
     d["address"] = _search(r"Address\s*:\s*(.+?)\s*(?:UPRN|Postcode|$)", text)
     return d
 
-AREA_LABELS = ["Room(s) in Roof","Rooms in Roof","Room in Roof","1st Floor","First Floor","Ground Floor","2nd Floor","Second Floor","Total Floor Area"]
-
 def parse_numeric_measures(text: str):
     m = {}
     for label in AREA_LABELS:
         pat = rf"{re.escape(label)}\s*:\s*([0-9]+(?:\.[0-9]+)?)"
         mm = re.search(pat, text, re.IGNORECASE)
         if mm:
-            try: m[label] = float(mm.group(1))
-            except: pass
+            try:
+                m[label] = float(mm.group(1))
+            except:
+                pass
     return m
-
-REC_NAMES = [
-    "Flat roof insulation","Room-in-roof insulation","Floor insulation (solid floor)",
-    "Heating controls for wet central heating system","Loft insulation",
-    "Cavity wall insulation","Draught proofing","Low energy lighting",
-]
 
 def parse_recommendations(text: str):
     recs = {}
-# ====== Site-notes parsing & QA checks ======
+    names = [
+        "Flat roof insulation",
+        "Room-in-roof insulation",
+        "Floor insulation (solid floor)",
+        "Heating controls for wet central heating system",
+        "Loft insulation",
+        "Cavity wall insulation",
+        "Draught proofing",
+        "Low energy lighting",
+    ]
+    for name in names:
+        pat = rf"{re.escape(name)}\s*\(([^)]+)\)"
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            recs[name] = m.group(1).strip().title()
+    return recs
 
+def pick_status(pre_text: str, post_text: str):
+    def choose(raw: str) -> str:
+        txt = (raw or "").lower()
+        for token in STAT_ORDER:
+            if token in txt:
+                return token.title()
+        return raw.strip() if raw else ""
+    return choose(pre_text), choose(post_text)
+
+# ====== Site-notes parsing & QA checks ======
 YES_TOKENS = {"y", "yes", "true", "present", "installed", "fitted", "exists", "smart", "on"}
 NO_TOKENS  = {"n", "no", "false", "absent", "none", "not present", "off"}
 
@@ -132,12 +169,10 @@ def to_bool(raw) -> bool | None:
     if raw is None:
         return None
     s = str(raw).strip().lower()
-    # accept bare 'smart' or similar as True
     if s in YES_TOKENS:
         return True
     if s in NO_TOKENS:
         return False
-    # If the text contains explicit yes/no words
     if any(tok in s for tok in YES_TOKENS):
         return True
     if any(tok in s for tok in NO_TOKENS):
@@ -158,10 +193,6 @@ def to_int(raw) -> int | None:
     return int(v) if v is not None else None
 
 def parse_site_notes(text: str) -> dict:
-    """
-    Heuristic parser for common items that appear in EPC/EPR 'site notes'.
-    Adjust patterns as your PDFs evolve.
-    """
     out = {}
 
     # Meters / utilities
@@ -224,10 +255,6 @@ def parse_site_notes(text: str) -> dict:
     return out
 
 def compare_site_notes(pre: dict, post: dict) -> list[dict]:
-    """
-    Compare normalised site notes between PRE and POST and emit QA flags.
-    Each flag: {level: 'error'|'warning'|'info', field: '...', message: '...'}
-    """
     issues = []
 
     def add(level, field, msg):
@@ -250,17 +277,16 @@ def compare_site_notes(pre: dict, post: dict) -> list[dict]:
 
     # 2) numeric deltas with sanity checks
     def delta(a, b):
-        if a is None or b is None: return None
+        if a is None or b is None:
+            return None
         return b - a
 
     ap4_d = delta(pre.get("air_permeability_ap4"), post.get("air_permeability_ap4"))
     if ap4_d is not None:
         if ap4_d > 0.5:
-            add("warning", "Air permeability (AP4)",
-                f"AP4 got worse by +{ap4_d:.2f}. Re-check air test entry.")
+            add("warning", "Air permeability (AP4)", f"AP4 got worse by +{ap4_d:.2f}. Re-check air test entry.")
         elif ap4_d < -2.0:
-            add("info", "Air permeability (AP4)",
-                f"AP4 improved by {abs(ap4_d):.2f}. Ensure test evidence attached.")
+            add("info", "Air permeability (AP4)", f"AP4 improved by {abs(ap4_d):.2f}. Ensure test evidence attached.")
 
     # lighting consistency
     pre_le, pre_total = pre.get("low_energy_lights"), pre.get("lights_total")
@@ -293,23 +319,18 @@ def compare_site_notes(pre: dict, post: dict) -> list[dict]:
 
     return issues
 
-    for name in REC_NAMES:
-        pat = rf"{re.escape(name)}\s*\(([^)]+)\)"
-        m = re.search(pat, text, re.IGNORECASE)
-        if m: recs[name] = m.group(1).strip().title()
-    return recs
-
-def gather(path: Path):def gather(path: Path):
+def gather(path: Path):
     raw = extract_text(path)
     text = "\n".join(norm_lines(raw))
     return {
         "summary": parse_summary(text),
         "measures": parse_numeric_measures(text),
         "recs": parse_recommendations(text),
-        "notes": parse_site_notes(text),   # <— add this line
-        "raw_text": text,                  # optional, handy for debugging
+        "notes": parse_site_notes(text),
+        "raw_text": text,
     }
 
+# ====== Routes ======
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     if not is_authed(request):
@@ -342,23 +363,30 @@ async def compare(
     try:
         if not is_authed(request):
             return RedirectResponse("/", status_code=302)
+
         if not pre.filename or not post.filename:
             return HTMLResponse("<h3>Please attach both PRE and POST PDFs.</h3>", status_code=400)
 
+        # Save uploads
         pre_path = UPLOADS_DIR / f"pre_{pre.filename}"
         post_path = UPLOADS_DIR / f"post_{post.filename}"
         pre_path.write_bytes(await pre.read())
         post_path.write_bytes(await post.read())
 
-        pre_data = {"summary": {}, "measures": {}, "recs": {}}
-        post_data = {"summary": {}, "measures": {}, "recs": {}}
+        # Parse
+        pre_data = {"summary": {}, "measures": {}, "recs": {}, "notes": {}}
+        post_data = {"summary": {}, "measures": {}, "recs": {}, "notes": {}}
         if not APP_SAFE:
             pre_data = gather(pre_path)
             post_data = gather(post_path)
 
-        if pre_date:  pre_data["summary"]["process_date"]  = pre_date
-        if post_date: post_data["summary"]["process_date"] = post_date
+        # Override dates if provided
+        if pre_date:
+            pre_data["summary"]["process_date"] = pre_date
+        if post_date:
+            post_data["summary"]["process_date"] = post_date
 
+        # Header block
         header = {
             "address": address or pre_data["summary"].get("address") or post_data["summary"].get("address") or "",
             "uprn": uprn or pre_data["summary"].get("uprn") or post_data["summary"].get("uprn") or "",
@@ -367,26 +395,49 @@ async def compare(
             "notes": notes,
         }
 
-        def delta(a, b): return None if (a is None or b is None) else (b - a)
+        # Deltas
+        def delta(a, b):
+            if a is None or b is None:
+                return None
+            return b - a
+
         diff = {
             "sap_change": delta(pre_data["summary"].get("sap_current"), post_data["summary"].get("sap_current")),
             "ei_change": delta(pre_data["summary"].get("ei_current"), post_data["summary"].get("ei_current")),
             "fuel_bill_change": delta(pre_data["summary"].get("fuel_bill"), post_data["summary"].get("fuel_bill")),
-            "recs": {}, "areas": {},
+            "recs": {},
+            "areas": {},
         }
+
         for n in sorted(set(list(pre_data["recs"].keys()) + list(post_data["recs"].keys()))):
             p, q = pick_status(pre_data["recs"].get(n, ""), post_data["recs"].get(n, ""))
             diff["recs"][n] = {"pre": p, "post": q}
 
         for label in sorted(set(list(pre_data["measures"].keys()) + list(post_data["measures"].keys()))):
-            a = pre_data["measures"].get(label); b = post_data["measures"].get(label)
-            diff["areas"][label] = {"pre": a, "post": b, "delta": delta(a, b)}
+            a = pre_data["measures"].get(label)
+            b = post_data["measures"].get(label)
+            diff["areas"][label] = {"pre": a, "post": b, "delta": (None if (a is None or b is None) else b - a)}
 
+        # QA flags
+        qa_flags = []
+        try:
+            qa_flags = compare_site_notes(pre_data.get("notes", {}) or {}, post_data.get("notes", {}) or {})
+        except Exception:
+            qa_flags = [{"level": "warning", "field": "QA", "message": "Site-notes QA skipped due to parsing error."}]
+
+        # Render
         now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
         html_str = TEMPLATES.get_template("report.html").render(
-            request=request, now=now, pre=pre_data, post=post_data, diff=diff, header=header
+            request=request,
+            now=now,
+            pre=pre_data,
+            post=post_data,
+            diff=diff,
+            header=header,
+            qa_flags=qa_flags,
         )
 
+        # Save last report to disk for PDF
         token = secrets.token_hex(8)
         html_file = UPLOADS_DIR / f"report_{token}.html"
         html_file.write_text(html_str, encoding="utf-8")
@@ -399,7 +450,8 @@ async def compare(
 
 @app.post("/pdf")
 async def pdf(request: Request):
-    if not is_authed(request): return RedirectResponse("/", status_code=302)
+    if not is_authed(request):
+        return RedirectResponse("/", status_code=302)
     try:
         token = request.session.get("last_token")
         html_file = (UPLOADS_DIR / f"report_{token}.html") if token else None
@@ -407,23 +459,26 @@ async def pdf(request: Request):
         if not html_str:
             return HTMLResponse("<h3>No report available. Please generate a comparison first.</h3>", status_code=400)
 
+        # Convert to PDF (best-effort; Print → Save as PDF is a good fallback)
         pdf_bytes = bytearray()
         result = pisa.CreatePDF(src=html_str, dest=pdf_bytes)
         if result.err:
-            return HTMLResponse("<h3>PDF generation failed. Try Print → Save as PDF.</h3>", status_code=500)
+            return HTMLResponse("<h3>PDF generation failed. Try browser Print → Save as PDF.</h3>", status_code=500)
 
         return Response(bytes(pdf_bytes), media_type="application/pdf", headers={
-            "Content-Disposition": "attachment; filename=station_road_comparison.pdf"
+            "Content-Disposition": "attachment; filename=amicoeco_comparison.pdf"
         })
     except Exception as e:
         return safe_error(e)
 
 @app.get("/health")
-async def health(): return {"ok": True}
+async def health():
+    return {"ok": True}
 
 @app.get("/__tail__", response_class=PlainTextResponse)
 async def tail_log(lines: int = 200):
     log_path = BASE / "app.log"
-    if not log_path.exists(): return "No app.log yet."
+    if not log_path.exists():
+        return "No app.log yet."
     data = log_path.read_text(encoding="utf-8", errors="ignore").splitlines()
     return "\n".join(data[-max(1, min(lines, 2000)):])
