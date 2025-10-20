@@ -1,115 +1,116 @@
 {% extends "base.html" %}
+{% block title %}EPC Comparison Report · Amico Eco{% endblock %}
 {% block content %}
-<div class="card">
-  <div class="report-header">
-    <div>
-      <h1 class="card-title">EPC Comparison Report</h1>
-      <div class="meta">
-        <div><strong>Address:</strong> {{ header.address or "-" }}</div>
-        <div><strong>UPRN:</strong> {{ header.uprn or "-" }}</div>
-      </div>
-    </div>
-    <div class="report-actions">
-      <form method="post" action="/pdf">
-        <button class="btn">Download PDF</button>
-      </form>
-      <button class="btn btn-ghost" onclick="window.print()">Print</button>
-    </div>
+
+<div class="card vgap-16">
+  <h1 class="h2">EPC Comparison Report</h1>
+  <div class="kpis">
+    <div><span class="muted">Address:</span> {{ header.address or "-" }}</div>
+    <div><span class="muted">UPRN:</span> {{ header.uprn or "-" }}</div>
+    <div><span class="muted">PRE Date:</span> {{ header.pre_date or pre.summary.process_date or "-" }}</div>
+    <div><span class="muted">POST Date:</span> {{ header.post_date or post.summary.process_date or "-" }}</div>
   </div>
 
   {% if header.notes %}
-    <div class="alert alert-info">{{ header.notes }}</div>
+    <div class="note">{{ header.notes }}</div>
   {% endif %}
-
-  {% if qa_flags and qa_flags|length > 0 %}
-    <div class="panel qa-panel">
-      <h2>QA Flags (Potential Input Errors)</h2>
-      <ul class="qa-list">
-        {% for f in qa_flags %}
-          <li class="qa-item qa-{{ f.level }}">
-            <strong>{{ f.field }}</strong> — {{ f.message }}
-          </li>
-        {% endfor %}
-      </ul>
-      <p class="muted">Automatic checks highlight PRE vs POST inconsistencies that commonly come from missed ticks or typos.</p>
-    </div>
-  {% endif %}
-
-  <div class="grid-3 kpis">
-    <div class="kpi">
-      <div class="kpi-label">Current SAP</div>
-      <div class="kpi-values">
-        <div class="chip chip-pre">{{ pre.summary.sap_current_band or "?" }} {{ pre.summary.sap_current or "?" }}</div>
-        <div class="chip chip-post">{{ post.summary.sap_current_band or "?" }} {{ post.summary.sap_current or "?" }}</div>
-        <div class="chip chip-delta">{{ diff.sap_change if diff.sap_change is not none else "—" }}</div>
-      </div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Current EI</div>
-      <div class="kpi-values">
-        <div class="chip chip-pre">{{ pre.summary.ei_current_band or "?" }} {{ pre.summary.ei_current or "?" }}</div>
-        <div class="chip chip-post">{{ post.summary.ei_current_band or "?" }} {{ post.summary.ei_current or "?" }}</div>
-        <div class="chip chip-delta">{{ diff.ei_change if diff.ei_change is not none else "—" }}</div>
-      </div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Fuel Bill (est.)</div>
-      <div class="kpi-values">
-        <div class="chip chip-pre">£{{ pre.summary.fuel_bill if pre.summary.fuel_bill is not none else "?" }}</div>
-        <div class="chip chip-post">£{{ post.summary.fuel_bill if post.summary.fuel_bill is not none else "?" }}</div>
-        <div class="chip chip-delta">
-          {% if diff.fuel_bill_change is not none %}£{{ diff.fuel_bill_change }}{% else %}—{% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <div class="panel">
-      <h3>Identifiers</h3>
-      <div class="table-like">
-        <div class="row"><div>PRE Survey Ref</div><div>{{ pre.summary.survey_reference or "-" }}</div></div>
-        <div class="row"><div>POST Survey Ref</div><div>{{ post.summary.survey_reference or "-" }}</div></div>
-        <div class="row"><div>PRE Ref Number</div><div>{{ pre.summary.reference_number or "-" }}</div></div>
-        <div class="row"><div>POST Ref Number</div><div>{{ post.summary.reference_number or "-" }}</div></div>
-        <div class="row"><div>PRE Process Date</div><div>{{ header.pre_date or "-" }}</div></div>
-        <div class="row"><div>POST Process Date</div><div>{{ header.post_date or "-" }}</div></div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h3>Key Areas (m²)</h3>
-      <div class="table-like header-3">
-        <div class="row head">
-          <div>Area</div><div>PRE</div><div>POST</div><div>Δ</div>
-        </div>
-        {% for label, obj in diff.areas.items() %}
-          <div class="row">
-            <div>{{ label }}</div>
-            <div>{{ obj.pre if obj.pre is not none else "-" }}</div>
-            <div>{{ obj.post if obj.post is not none else "-" }}</div>
-            <div>{% if obj.delta is not none %}{{ obj.delta }}{% else %}—{% endif %}</div>
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <h3>Recommendations — Status Change</h3>
-    <div class="table-like header-3">
-      <div class="row head"><div>Measure</div><div>PRE</div><div>POST</div></div>
-      {% for name, o in diff.recs.items() %}
-        <div class="row">
-          <div>{{ name }}</div>
-          <div>{{ o.pre or "-" }}</div>
-          <div>{{ o.post or "-" }}</div>
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="muted small">Generated {{ now }}</div>
 </div>
-{% endblock %}
 
+{% if qa_flags and qa_flags|length > 0 %}
+<div class="card info vgap-8">
+  <h2 class="h3">QA Flags (Potential Input Errors)</h2>
+  <ul class="list">
+    {% for f in qa_flags %}
+      <li>
+        <span class="badge {{ 'danger' if f.level=='error' else 'warn' if f.level=='warning' else 'info' }}">
+          {{ f.level|title }}
+        </span>
+        <strong>{{ f.field }}</strong> — {{ f.message }}
+      </li>
+    {% endfor %}
+  </ul>
+  <p class="muted">Automatic checks highlight PRE vs POST inconsistencies that commonly come from missed ticks or typos.</p>
+</div>
+{% endif %}
+
+<div class="grid-2 vgap-16">
+  <div class="card vgap-8">
+    <h3 class="h4">Current SAP</h3>
+    <div class="stat-row">
+      <div class="stat">Band <span class="chip">{{ pre.summary.sap_current_band or '' }}</span></div>
+      <div class="stat">Score <span class="chip">{{ pre.summary.sap_current or '' }}</span></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat">Band <span class="chip accent">{{ post.summary.sap_current_band or '' }}</span></div>
+      <div class="stat">Score <span class="chip accent">{{ post.summary.sap_current or '' }}</span></div>
+    </div>
+    {% if diff.sap_change is not none %}
+    <div class="delta">Change: <span class="chip {{ 'up' if diff.sap_change>0 else 'down' if diff.sap_change<0 else '' }}">{{ diff.sap_change }}</span></div>
+    {% endif %}
+  </div>
+
+  <div class="card vgap-8">
+    <h3 class="h4">Current EI</h3>
+    <div class="stat-row">
+      <div class="stat">Band <span class="chip">{{ pre.summary.ei_current_band or '' }}</span></div>
+      <div class="stat">Score <span class="chip">{{ pre.summary.ei_current or '' }}</span></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat">Band <span class="chip accent">{{ post.summary.ei_current_band or '' }}</span></div>
+      <div class="stat">Score <span class="chip accent">{{ post.summary.ei_current or '' }}</span></div>
+    </div>
+    {% if diff.ei_change is not none %}
+    <div class="delta">Change: <span class="chip {{ 'up' if diff.ei_change>0 else 'down' if diff.ei_change<0 else '' }}">{{ diff.ei_change }}</span></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card vgap-8">
+  <h3 class="h4">Fuel Bill (est.)</h3>
+  <div class="stat-row">
+    <div class="stat">PRE <span class="chip">£{{ pre.summary.fuel_bill or '' }}</span></div>
+    <div class="stat">POST <span class="chip accent">£{{ post.summary.fuel_bill or '' }}</span></div>
+  </div>
+  {% if diff.fuel_bill_change is not none %}
+  <div class="delta">Change: <span class="chip {{ 'down' if diff.fuel_bill_change<0 else 'up' if diff.fuel_bill_change>0 else '' }}">£{{ diff.fuel_bill_change }}</span></div>
+  {% endif %}
+</div>
+
+<div class="grid-2 vgap-16">
+  <div class="card">
+    <h3 class="h4">Recommendations — Status Change</h3>
+    <table class="table">
+      <thead><tr><th>Measure</th><th>PRE</th><th>POST</th></tr></thead>
+      <tbody>
+        {% for name, vals in diff.recs.items() %}
+          <tr>
+            <td>{{ name }}</td>
+            <td>{{ vals.pre or '-' }}</td>
+            <td>{{ vals.post or '-' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 class="h4">Key Areas (m²)</h3>
+    <table class="table">
+      <thead><tr><th>Area</th><th>PRE</th><th>POST</th><th>Δ</th></tr></thead>
+      <tbody>
+        {% for label, vals in diff.areas.items() %}
+          <tr>
+            <td>{{ label }}</td>
+            <td>{{ vals.pre if vals.pre is not none else '-' }}</td>
+            <td>{{ vals.post if vals.post is not none else '-' }}</td>
+            <td class="{{ 'pos' if vals.delta and vals.delta>0 else 'neg' if vals.delta and vals.delta<0 else '' }}">
+              {% if vals.delta is not none %}{{ '%.2f'|format(vals.delta) }}{% else %}-{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
