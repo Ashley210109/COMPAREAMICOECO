@@ -123,6 +123,176 @@ REC_NAMES = [
 
 def parse_recommendations(text: str):
     recs = {}
+# ====== Site-notes parsing & QA checks ======
+
+YES_TOKENS = {"y", "yes", "true", "present", "installed", "fitted", "exists", "smart", "on"}
+NO_TOKENS  = {"n", "no", "false", "absent", "none", "not present", "off"}
+
+def to_bool(raw) -> bool | None:
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    # accept bare 'smart' or similar as True
+    if s in YES_TOKENS:
+        return True
+    if s in NO_TOKENS:
+        return False
+    # If the text contains explicit yes/no words
+    if any(tok in s for tok in YES_TOKENS):
+        return True
+    if any(tok in s for tok in NO_TOKENS):
+        return False
+    return None
+
+def to_float(raw) -> float | None:
+    if raw is None:
+        return None
+    try:
+        s = str(raw).replace(",", "").strip()
+        return float(s)
+    except:
+        return None
+
+def to_int(raw) -> int | None:
+    v = to_float(raw)
+    return int(v) if v is not None else None
+
+def parse_site_notes(text: str) -> dict:
+    """
+    Heuristic parser for common items that appear in EPC/EPR 'site notes'.
+    Adjust patterns as your PDFs evolve.
+    """
+    out = {}
+
+    # Meters / utilities
+    m = re.search(r"smart\s+gas\s+meter(?:\s*[:\-]?\s*(yes|no|present|absent|true|false|on|off))?", text, re.I)
+    out["smart_gas_meter"] = to_bool(m.group(1) if m and m.lastindex else (m.group(0) if m else None))
+
+    m = re.search(r"smart\s+electric(\w*)\s+meter(?:\s*[:\-]?\s*(yes|no|present|absent|true|false|on|off))?", text, re.I)
+    out["smart_elec_meter"] = to_bool(m.group(1) if m and m.lastindex else (m.group(0) if m else None))
+
+    # Insulation
+    m = re.search(r"loft\s+insulation(?:\s*[:\-]?\s*(\d+)\s*mm)?", text, re.I)
+    out["loft_insulation_mm"] = to_int(m.group(1)) if m and m.lastindex else None
+    out["loft_insulated"] = (out["loft_insulation_mm"] is not None and out["loft_insulation_mm"] > 0)
+
+    m = re.search(r"(?:cavity|cav)\s+wall\s+insulation(?:\s*[:\-]?\s*(yes|no|present|absent|true|false))?", text, re.I)
+    out["cavity_wall_insulation"] = to_bool(m.group(1) if m and m.lastindex else (m.group(0) if m else None))
+
+    m = re.search(r"(internal|solid)\s+wall\s+insulation(?:\s*[:\-]?\s*(\d+)\s*mm)?", text, re.I)
+    out["internal_wall_insulation_mm"] = to_int(m.group(2)) if m and m.lastindex and m.group(2) else None
+
+    m = re.search(r"flat\s+roof\s+insulation(?:\s*[:\-]?\s*(yes|no|present|absent|true|false))?", text, re.I)
+    out["flat_roof_insulated"] = to_bool(m.group(1) if m and m.lastindex else (m.group(0) if m else None))
+
+    # Ventilation / airtightness
+    m = re.search(r"\bMEV\b|\bdecentralised\s+extract\b|\bMVHR\b|\bmechanical\s+ventilation\b", text, re.I)
+    out["mechanical_ventilation"] = bool(m)
+
+    m = re.search(r"(?:air\s*pressure|AP4)[^0-9]*([0-9]+(?:\.[0-9]+)?)", text, re.I)
+    out["air_permeability_ap4"] = to_float(m.group(1)) if m else None
+
+    # Openings / glazing / lighting
+    m = re.search(r"double\s+glaz(ed|ing)(?:\s*[:\-]?\s*(yes|no))?", text, re.I)
+    out["double_glazed"] = to_bool(m.group(2)) if m and m.lastindex and m.group(2) else bool(m)
+
+    m = re.search(r"doors?\s*[:\-]?\s*(\d+)\s*\(uninsulated\)", text, re.I)
+    out["doors_uninsulated"] = to_int(m.group(1)) if m else None
+
+    m = re.search(r"(\d+)\s+low[- ]energy\s+of\s+(\d+)", text, re.I)
+    if m:
+        out["low_energy_lights"] = to_int(m.group(1))
+        out["lights_total"] = to_int(m.group(2))
+    else:
+        out["low_energy_lights"] = None
+        out["lights_total"] = None
+
+    # Heating & hot water
+    m = re.search(r"main\s+heating\s+system.*?(\d{2,3}\.\d)%", text, re.I)
+    out["main_heat_eff_pct"] = to_float(m.group(1)) if m else None
+
+    m = re.search(r"heating\s+controls?.*?(smart|zoned|trv|programm(er|able)|room\s*thermostat)", text, re.I)
+    out["heating_controls_smart"] = bool(m and re.search(r"smart|zoned|trv", m.group(0), re.I))
+
+    m = re.search(r"water\s+heating.*?(cylinder|combi|no\s+cylinder)", text, re.I)
+    out["hot_water_type"] = m.group(1).lower() if m else None
+
+    # Renewables
+    m = re.search(r"\bsolar\s+pv\b|\bphotovoltaic\b", text, re.I)
+    out["pv_present"] = bool(m)
+
+    return out
+
+def compare_site_notes(pre: dict, post: dict) -> list[dict]:
+    """
+    Compare normalised site notes between PRE and POST and emit QA flags.
+    Each flag: {level: 'error'|'warning'|'info', field: '...', message: '...'}
+    """
+    issues = []
+
+    def add(level, field, msg):
+        issues.append({"level": level, "field": field, "message": msg})
+
+    # 1) simple boolean consistency checks
+    for field, label in [
+        ("smart_gas_meter", "Smart gas meter"),
+        ("smart_elec_meter", "Smart electric meter"),
+        ("mechanical_ventilation", "Mechanical ventilation"),
+        ("double_glazed", "Double glazing"),
+        ("pv_present", "Solar PV"),
+        ("flat_roof_insulated", "Flat roof insulation"),
+    ]:
+        pre_v, post_v = pre.get(field), post.get(field)
+        if pre_v is True and post_v is False:
+            add("error", label, f"{label} ticked PRE but not POST — likely missed on POST.")
+        elif pre_v is False and post_v is True:
+            add("info", label, f"{label} added on POST — verify this was actually installed.")
+
+    # 2) numeric deltas with sanity checks
+    def delta(a, b):
+        if a is None or b is None: return None
+        return b - a
+
+    ap4_d = delta(pre.get("air_permeability_ap4"), post.get("air_permeability_ap4"))
+    if ap4_d is not None:
+        if ap4_d > 0.5:
+            add("warning", "Air permeability (AP4)",
+                f"AP4 got worse by +{ap4_d:.2f}. Re-check air test entry.")
+        elif ap4_d < -2.0:
+            add("info", "Air permeability (AP4)",
+                f"AP4 improved by {abs(ap4_d):.2f}. Ensure test evidence attached.")
+
+    # lighting consistency
+    pre_le, pre_total = pre.get("low_energy_lights"), pre.get("lights_total")
+    post_le, post_total = post.get("low_energy_lights"), post.get("lights_total")
+    if pre_total and post_total and pre_total != post_total:
+        add("warning", "Lighting totals", f"Total points changed {pre_total} → {post_total}. Confirm count method.")
+    if pre_le and post_le and post_le < pre_le:
+        add("warning", "Low-energy lighting", f"Low-energy fittings dropped {pre_le} → {post_le}. Check data.")
+
+    # doors sanity
+    pre_doors, post_doors = pre.get("doors_uninsulated"), post.get("doors_uninsulated")
+    if pre_doors is not None and post_doors is not None:
+        if post_doors < pre_doors - 2:
+            add("info", "Doors", f"Uninsulated doors reduced {pre_doors} → {post_doors}. Were doors replaced/insulated?")
+
+    # insulation coherence
+    pre_loft_mm, post_loft_mm = pre.get("loft_insulation_mm"), post.get("loft_insulation_mm")
+    if pre_loft_mm is not None and post_loft_mm is not None and post_loft_mm < pre_loft_mm:
+        add("warning", "Loft insulation", f"Thickness decreased {pre_loft_mm}mm → {post_loft_mm}mm. Check entry.")
+
+    # controls coherence
+    if post.get("heating_controls_smart") and not post.get("main_heat_eff_pct"):
+        add("warning", "Heating controls", "Smart controls marked but main system details missing. Add boiler/system data.")
+
+    # PV coherence
+    if post.get("pv_present") and post.get("low_energy_lights") is None:
+        add("info", "Solar PV", "PV present but lighting counts missing. Consider completing lighting data for SAP.")
+    if pre.get("pv_present") and not post.get("pv_present"):
+        add("error", "Solar PV", "PV ticked PRE but not POST — confirm which is correct.")
+
+    return issues
+
     for name in REC_NAMES:
         pat = rf"{re.escape(name)}\s*\(([^)]+)\)"
         m = re.search(pat, text, re.IGNORECASE)
