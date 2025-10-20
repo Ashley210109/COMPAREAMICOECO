@@ -1,146 +1,115 @@
 {% extends "base.html" %}
-{% block title %}Report • Station Road{% endblock %}
 {% block content %}
-
-<!-- Header strip -->
-<div class="sr-report-header mb-4 shadow-sm">
-  <div class="row g-3 align-items-center">
-    <div class="col-md">
-      <div class="sr-eyebrow text-uppercase">Comparison Report</div>
-      <h1 class="h4 mb-0">{{ header.address or "—" }}</h1>
-      <div class="text-muted small mt-1">UPRN: {{ header.uprn or "—" }}</div>
+<div class="card">
+  <div class="report-header">
+    <div>
+      <h1 class="card-title">EPC Comparison Report</h1>
+      <div class="meta">
+        <div><strong>Address:</strong> {{ header.address or "-" }}</div>
+        <div><strong>UPRN:</strong> {{ header.uprn or "-" }}</div>
+      </div>
     </div>
-    <div class="col-auto text-end">
-      <div class="sr-chip">PRE: {{ header.pre_date or "—" }}</div>
-      <div class="sr-chip">POST: {{ header.post_date or "—" }}</div>
+    <div class="report-actions">
+      <form method="post" action="/pdf">
+        <button class="btn">Download PDF</button>
+      </form>
+      <button class="btn btn-ghost" onclick="window.print()">Print</button>
     </div>
   </div>
-</div>
 
-{% if header.notes %}
-  <div class="alert alert-info shadow-sm">
-    <strong>Notes:</strong><div class="mt-1">{{ header.notes }}</div>
-  </div>
-{% endif %}
+  {% if header.notes %}
+    <div class="alert alert-info">{{ header.notes }}</div>
+  {% endif %}
 
-<!-- KPI Grid -->
-<div class="row g-3 mb-3">
-  <div class="col-md-4">
-    <div class="sr-kpi card shadow-sm">
-      <div class="card-body">
-        <div class="sr-kpi-label">Current SAP</div>
-        <div class="sr-kpi-values">
-          <div><span class="sr-pill sr-pill-muted">PRE</span> {{ pre.summary.sap_current_band or "?" }} {{ pre.summary.sap_current or "?" }}</div>
-          <div><span class="sr-pill sr-pill-success">POST</span> {{ post.summary.sap_current_band or "?" }} {{ post.summary.sap_current or "?" }}</div>
-        </div>
-        <div class="sr-kpi-delta {{ 'text-success' if diff.sap_change and diff.sap_change>0 else 'text-danger' if diff.sap_change and diff.sap_change<0 else 'text-muted' }}">
-          Change: {{ diff.sap_change if diff.sap_change is not none else "—" }}
+  {% if qa_flags and qa_flags|length > 0 %}
+    <div class="panel qa-panel">
+      <h2>QA Flags (Potential Input Errors)</h2>
+      <ul class="qa-list">
+        {% for f in qa_flags %}
+          <li class="qa-item qa-{{ f.level }}">
+            <strong>{{ f.field }}</strong> — {{ f.message }}
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="muted">Automatic checks highlight PRE vs POST inconsistencies that commonly come from missed ticks or typos.</p>
+    </div>
+  {% endif %}
+
+  <div class="grid-3 kpis">
+    <div class="kpi">
+      <div class="kpi-label">Current SAP</div>
+      <div class="kpi-values">
+        <div class="chip chip-pre">{{ pre.summary.sap_current_band or "?" }} {{ pre.summary.sap_current or "?" }}</div>
+        <div class="chip chip-post">{{ post.summary.sap_current_band or "?" }} {{ post.summary.sap_current or "?" }}</div>
+        <div class="chip chip-delta">{{ diff.sap_change if diff.sap_change is not none else "—" }}</div>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Current EI</div>
+      <div class="kpi-values">
+        <div class="chip chip-pre">{{ pre.summary.ei_current_band or "?" }} {{ pre.summary.ei_current or "?" }}</div>
+        <div class="chip chip-post">{{ post.summary.ei_current_band or "?" }} {{ post.summary.ei_current or "?" }}</div>
+        <div class="chip chip-delta">{{ diff.ei_change if diff.ei_change is not none else "—" }}</div>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Fuel Bill (est.)</div>
+      <div class="kpi-values">
+        <div class="chip chip-pre">£{{ pre.summary.fuel_bill if pre.summary.fuel_bill is not none else "?" }}</div>
+        <div class="chip chip-post">£{{ post.summary.fuel_bill if post.summary.fuel_bill is not none else "?" }}</div>
+        <div class="chip chip-delta">
+          {% if diff.fuel_bill_change is not none %}£{{ diff.fuel_bill_change }}{% else %}—{% endif %}
         </div>
       </div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="sr-kpi card shadow-sm">
-      <div class="card-body">
-        <div class="sr-kpi-label">Current EI</div>
-        <div class="sr-kpi-values">
-          <div><span class="sr-pill sr-pill-muted">PRE</span> {{ pre.summary.ei_current_band or "?" }} {{ pre.summary.ei_current or "?" }}</div>
-          <div><span class="sr-pill sr-pill-success">POST</span> {{ post.summary.ei_current_band or "?" }} {{ post.summary.ei_current or "?" }}</div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <h3>Identifiers</h3>
+      <div class="table-like">
+        <div class="row"><div>PRE Survey Ref</div><div>{{ pre.summary.survey_reference or "-" }}</div></div>
+        <div class="row"><div>POST Survey Ref</div><div>{{ post.summary.survey_reference or "-" }}</div></div>
+        <div class="row"><div>PRE Ref Number</div><div>{{ pre.summary.reference_number or "-" }}</div></div>
+        <div class="row"><div>POST Ref Number</div><div>{{ post.summary.reference_number or "-" }}</div></div>
+        <div class="row"><div>PRE Process Date</div><div>{{ header.pre_date or "-" }}</div></div>
+        <div class="row"><div>POST Process Date</div><div>{{ header.post_date or "-" }}</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Key Areas (m²)</h3>
+      <div class="table-like header-3">
+        <div class="row head">
+          <div>Area</div><div>PRE</div><div>POST</div><div>Δ</div>
         </div>
-        <div class="sr-kpi-delta {{ 'text-success' if diff.ei_change and diff.ei_change>0 else 'text-danger' if diff.ei_change and diff.ei_change<0 else 'text-muted' }}">
-          Change: {{ diff.ei_change if diff.ei_change is not none else "—" }}
-        </div>
+        {% for label, obj in diff.areas.items() %}
+          <div class="row">
+            <div>{{ label }}</div>
+            <div>{{ obj.pre if obj.pre is not none else "-" }}</div>
+            <div>{{ obj.post if obj.post is not none else "-" }}</div>
+            <div>{% if obj.delta is not none %}{{ obj.delta }}{% else %}—{% endif %}</div>
+          </div>
+        {% endfor %}
       </div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="sr-kpi card shadow-sm">
-      <div class="card-body">
-        <div class="sr-kpi-label">Fuel Bill (est.)</div>
-        <div class="sr-kpi-values">
-          <div><span class="sr-pill sr-pill-muted">PRE</span> £{{ pre.summary.fuel_bill if pre.summary.fuel_bill is not none else "—" }}</div>
-          <div><span class="sr-pill sr-pill-success">POST</span> £{{ post.summary.fuel_bill if post.summary.fuel_bill is not none else "—" }}</div>
+
+  <div class="panel">
+    <h3>Recommendations — Status Change</h3>
+    <div class="table-like header-3">
+      <div class="row head"><div>Measure</div><div>PRE</div><div>POST</div></div>
+      {% for name, o in diff.recs.items() %}
+        <div class="row">
+          <div>{{ name }}</div>
+          <div>{{ o.pre or "-" }}</div>
+          <div>{{ o.post or "-" }}</div>
         </div>
-        <div class="sr-kpi-delta {{ 'text-success' if diff.fuel_bill_change and diff.fuel_bill_change<0 else 'text-danger' if diff.fuel_bill_change and diff.fuel_bill_change>0 else 'text-muted' }}">
-          Change: {{ "{:+.1f}".format(diff.fuel_bill_change) if diff.fuel_bill_change is not none else "—" }}
-        </div>
-      </div>
+      {% endfor %}
     </div>
   </div>
-</div>
 
-<!-- Recommendations -->
-<div class="card sr-card shadow-sm mb-3">
-  <div class="card-body">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-      <h2 class="h5 mb-0">Recommendations</h2>
-      <span class="badge bg-soft-primary text-primary">{{ diff.recs|length }} measures</span>
-    </div>
-    <div class="table-responsive">
-      <table class="table align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Measure</th>
-            <th class="text-center">PRE</th>
-            <th class="text-center">POST</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for name, row in diff.recs.items() %}
-          <tr>
-            <td class="fw-500">{{ name }}</td>
-            <td class="text-center"><span class="sr-badge">{{ row.pre or "—" }}</span></td>
-            <td class="text-center"><span class="sr-badge">{{ row.post or "—" }}</span></td>
-          </tr>
-          {% endfor %}
-          {% if diff.recs|length == 0 %}
-            <tr><td colspan="3" class="text-center text-muted">No recommendations detected.</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-    <div class="small text-muted">Tip: “Flat roof insulation” & “Room-in-roof insulation” must appear verbatim in the PDFs.</div>
-  </div>
+  <div class="muted small">Generated {{ now }}</div>
 </div>
-
-<!-- Areas -->
-<div class="card sr-card shadow-sm">
-  <div class="card-body">
-    <h2 class="h5 mb-3">Key Areas (m²)</h2>
-    <div class="table-responsive">
-      <table class="table align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Area</th>
-            <th class="text-center">PRE</th>
-            <th class="text-center">POST</th>
-            <th class="text-center">Δ</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for label, vals in diff.areas.items() %}
-          <tr>
-            <td class="fw-500">{{ label }}</td>
-            <td class="text-center">{{ vals.pre if vals.pre is not none else "—" }}</td>
-            <td class="text-center">{{ vals.post if vals.post is not none else "—" }}</td>
-            <td class="text-center fw-600 {{ 'text-success' if vals.delta and vals.delta>0 else 'text-danger' if vals.delta and vals.delta<0 else 'text-muted' }}">
-              {{ "{:+.2f}".format(vals.delta) if vals.delta is not none else "—" }}
-            </td>
-          </tr>
-          {% endfor %}
-          {% if diff.areas|length == 0 %}
-          <tr><td colspan="4" class="text-center text-muted">No area metrics detected.</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-    <div class="d-print-none mt-3 d-flex gap-2">
-      <a href="/" class="btn btn-ghost">← Back</a>
-      <form method="post" action="/pdf"><button class="btn btn-primary">Download PDF</button></form>
-      <button class="btn btn-outline-primary" onclick="window.print()">Print</button>
-    </div>
-    <div class="text-center text-muted small mt-3">Use <em>Print → Save as PDF</em> for a branded export.</div>
-  </div>
-</div>
-
 {% endblock %}
+
