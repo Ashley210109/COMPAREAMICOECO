@@ -12,49 +12,34 @@ from starlette.middleware.sessions import SessionMiddleware
 from PyPDF2 import PdfReader
 from xhtml2pdf import pisa
 
-# ====== Paths & setup ======
+# ====== Setup ======
 BASE = Path(__file__).parent
 TEMPLATES_DIR = BASE / "templates"
 STATIC_DIR = BASE / "static"
 UPLOADS_DIR = BASE / "uploads"
 
-TEMPLATES_DIR.mkdir(exist_ok=True, parents=True)
-(STATIC_DIR / "css").mkdir(exist_ok=True, parents=True)
-UPLOADS_DIR.mkdir(exist_ok=True, parents=True)
+TEMPLATES_DIR.mkdir(exist_ok=True)
+STATIC_DIR.mkdir(exist_ok=True)
+( STATIC_DIR / "css" ).mkdir(parents=True, exist_ok=True)
+UPLOADS_DIR.mkdir(exist_ok=True)
 
 TEMPLATES = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
 APP_SAFE = os.environ.get("APP_SAFE", "0") == "1"
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "dev-secret-change-me")
 
 logger = logging.getLogger("amicoeco")
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Amico Eco • EPC Comparator")
-app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SESSION_SECRET", "dev-secret-change-me"))
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_headers=["*"],
-    allow_methods=["*"],
-)
-app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_headers=["*"], allow_methods=["*"])
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# ====== Helpers: parsing core ======
-STAT_ORDER = [
-    "already installed",
-    "not applicable",
-    "sap increase too small",
-    "recommended",
-]
+# ====== Helpers ======
 
-AREA_LABELS = [
-    "Room(s) in Roof","Rooms in Roof","Room in Roof",
-    "1st Floor","First Floor",
-    "Ground Floor",
-    "2nd Floor","Second Floor",
-    "Total Floor Area",
-]
+STAT_ORDER = ["already installed", "not applicable", "sap increase too small", "recommended"]
 
 def norm_ws(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "")).strip()
@@ -64,7 +49,7 @@ def is_authed(request: Request) -> bool:
 
 def safe_error(e: Exception) -> HTMLResponse:
     tb = traceback.format_exc()
-    logger.error("Unhandled error:\n%s", tb)
+    logger.error("Error:\n%s", tb)
     return HTMLResponse(f"<h2>Internal error</h2><pre>{html_mod.escape(tb)}</pre>", status_code=500)
 
 def extract_text(path: Path) -> str:
@@ -78,29 +63,28 @@ def extract_text(path: Path) -> str:
     lines = [norm_ws(ln) for ln in "\n".join(pages).splitlines()]
     return "\n".join([ln for ln in lines if ln])
 
-def norm_lines(s: str):
-    lines = [re.sub(r"\s+", " ", ln).strip() for ln in s.splitlines()]
-    return [ln for ln in lines if ln]
+def pick_status(pre_text: str, post_text: str):
+    def choose(raw: str) -> str:
+        txt = (raw or "").lower()
+        for token in STAT_ORDER:
+            if token in txt:
+                return token.title()
+        return raw.strip() if raw else ""
+    return choose(pre_text), choose(post_text)
 
 def _search(pat: str, text: str, cast=str, default=None):
     m = re.search(pat, text, re.IGNORECASE)
-    if not m:
-        return default
+    if not m: return default
     val = m.group(1).strip()
-    try:
-        return cast(val)
-    except Exception:
-        return val
+    try: return cast(val)
+    except Exception: return val
 
 def _search_float(pat: str, text: str):
     m = re.search(pat, text, re.IGNORECASE)
-    if not m:
-        return None
+    if not m: return None
     v = m.group(1).replace(",", "")
-    try:
-        return float(v)
-    except Exception:
-        return None
+    try: return float(v)
+    except Exception: return None
 
 def parse_summary(text: str):
     d = {}
@@ -121,45 +105,34 @@ def parse_summary(text: str):
     d["address"] = _search(r"Address\s*:\s*(.+?)\s*(?:UPRN|Postcode|$)", text)
     return d
 
+AREA_LABELS = [
+    "Room(s) in Roof","Rooms in Roof","Room in Roof",
+    "1st Floor","First Floor","Ground Floor","2nd Floor","Second Floor","Total Floor Area"
+]
+
 def parse_numeric_measures(text: str):
     m = {}
     for label in AREA_LABELS:
         pat = rf"{re.escape(label)}\s*:\s*([0-9]+(?:\.[0-9]+)?)"
         mm = re.search(pat, text, re.IGNORECASE)
         if mm:
-            try:
-                m[label] = float(mm.group(1))
-            except:
-                pass
+            try: m[label] = float(mm.group(1))
+            except: pass
     return m
+
+REC_NAMES = [
+    "Flat roof insulation","Room-in-roof insulation","Floor insulation (solid floor)",
+    "Heating controls for wet central heating system","Loft insulation",
+    "Cavity wall insulation","Draught proofing","Low energy lighting",
+]
 
 def parse_recommendations(text: str):
     recs = {}
-    names = [
-        "Flat roof insulation",
-        "Room-in-roof insulation",
-        "Floor insulation (solid floor)",
-        "Heating controls for wet central heating system",
-        "Loft insulation",
-        "Cavity wall insulation",
-        "Draught proofing",
-        "Low energy lighting",
-    ]
-    for name in names:
+    for name in REC_NAMES:
         pat = rf"{re.escape(name)}\s*\(([^)]+)\)"
         m = re.search(pat, text, re.IGNORECASE)
-        if m:
-            recs[name] = m.group(1).strip().title()
+        if m: recs[name] = m.group(1).strip().title()
     return recs
-
-def pick_status(pre_text: str, post_text: str):
-    def choose(raw: str) -> str:
-        txt = (raw or "").lower()
-        for token in STAT_ORDER:
-            if token in txt:
-                return token.title()
-        return raw.strip() if raw else ""
-    return choose(pre_text), choose(post_text)
 
 # ====== Site-notes parsing & QA checks ======
 YES_TOKENS = {"y", "yes", "true", "present", "installed", "fitted", "exists", "smart", "on"}
@@ -169,19 +142,14 @@ def to_bool(raw) -> bool | None:
     if raw is None:
         return None
     s = str(raw).strip().lower()
-    if s in YES_TOKENS:
-        return True
-    if s in NO_TOKENS:
-        return False
-    if any(tok in s for tok in YES_TOKENS):
-        return True
-    if any(tok in s for tok in NO_TOKENS):
-        return False
+    if s in YES_TOKENS: return True
+    if s in NO_TOKENS:  return False
+    if any(tok in s for tok in YES_TOKENS): return True
+    if any(tok in s for tok in NO_TOKENS):  return False
     return None
 
 def to_float(raw) -> float | None:
-    if raw is None:
-        return None
+    if raw is None: return None
     try:
         s = str(raw).replace(",", "").strip()
         return float(s)
@@ -194,15 +162,12 @@ def to_int(raw) -> int | None:
 
 def parse_site_notes(text: str) -> dict:
     out = {}
-
-    # Meters / utilities
     m = re.search(r"smart\s+gas\s+meter(?:\s*[:\-]?\s*(yes|no|present|absent|true|false|on|off))?", text, re.I)
     out["smart_gas_meter"] = to_bool(m.group(1) if m and m.lastindex else (m.group(0) if m else None))
 
     m = re.search(r"smart\s+electric(\w*)\s+meter(?:\s*[:\-]?\s*(yes|no|present|absent|true|false|on|off))?", text, re.I)
     out["smart_elec_meter"] = to_bool(m.group(1) if m and m.lastindex else (m.group(0) if m else None))
 
-    # Insulation
     m = re.search(r"loft\s+insulation(?:\s*[:\-]?\s*(\d+)\s*mm)?", text, re.I)
     out["loft_insulation_mm"] = to_int(m.group(1)) if m and m.lastindex else None
     out["loft_insulated"] = (out["loft_insulation_mm"] is not None and out["loft_insulation_mm"] > 0)
@@ -216,14 +181,12 @@ def parse_site_notes(text: str) -> dict:
     m = re.search(r"flat\s+roof\s+insulation(?:\s*[:\-]?\s*(yes|no|present|absent|true|false))?", text, re.I)
     out["flat_roof_insulated"] = to_bool(m.group(1) if m and m.lastindex else (m.group(0) if m else None))
 
-    # Ventilation / airtightness
     m = re.search(r"\bMEV\b|\bdecentralised\s+extract\b|\bMVHR\b|\bmechanical\s+ventilation\b", text, re.I)
     out["mechanical_ventilation"] = bool(m)
 
     m = re.search(r"(?:air\s*pressure|AP4)[^0-9]*([0-9]+(?:\.[0-9]+)?)", text, re.I)
     out["air_permeability_ap4"] = to_float(m.group(1)) if m else None
 
-    # Openings / glazing / lighting
     m = re.search(r"double\s+glaz(ed|ing)(?:\s*[:\-]?\s*(yes|no))?", text, re.I)
     out["double_glazed"] = to_bool(m.group(2)) if m and m.lastindex and m.group(2) else bool(m)
 
@@ -238,7 +201,6 @@ def parse_site_notes(text: str) -> dict:
         out["low_energy_lights"] = None
         out["lights_total"] = None
 
-    # Heating & hot water
     m = re.search(r"main\s+heating\s+system.*?(\d{2,3}\.\d)%", text, re.I)
     out["main_heat_eff_pct"] = to_float(m.group(1)) if m else None
 
@@ -248,7 +210,6 @@ def parse_site_notes(text: str) -> dict:
     m = re.search(r"water\s+heating.*?(cylinder|combi|no\s+cylinder)", text, re.I)
     out["hot_water_type"] = m.group(1).lower() if m else None
 
-    # Renewables
     m = re.search(r"\bsolar\s+pv\b|\bphotovoltaic\b", text, re.I)
     out["pv_present"] = bool(m)
 
@@ -256,11 +217,9 @@ def parse_site_notes(text: str) -> dict:
 
 def compare_site_notes(pre: dict, post: dict) -> list[dict]:
     issues = []
-
     def add(level, field, msg):
         issues.append({"level": level, "field": field, "message": msg})
 
-    # 1) simple boolean consistency checks
     for field, label in [
         ("smart_gas_meter", "Smart gas meter"),
         ("smart_elec_meter", "Smart electric meter"),
@@ -275,10 +234,8 @@ def compare_site_notes(pre: dict, post: dict) -> list[dict]:
         elif pre_v is False and post_v is True:
             add("info", label, f"{label} added on POST — verify this was actually installed.")
 
-    # 2) numeric deltas with sanity checks
     def delta(a, b):
-        if a is None or b is None:
-            return None
+        if a is None or b is None: return None
         return b - a
 
     ap4_d = delta(pre.get("air_permeability_ap4"), post.get("air_permeability_ap4"))
@@ -288,7 +245,6 @@ def compare_site_notes(pre: dict, post: dict) -> list[dict]:
         elif ap4_d < -2.0:
             add("info", "Air permeability (AP4)", f"AP4 improved by {abs(ap4_d):.2f}. Ensure test evidence attached.")
 
-    # lighting consistency
     pre_le, pre_total = pre.get("low_energy_lights"), pre.get("lights_total")
     post_le, post_total = post.get("low_energy_lights"), post.get("lights_total")
     if pre_total and post_total and pre_total != post_total:
@@ -296,22 +252,18 @@ def compare_site_notes(pre: dict, post: dict) -> list[dict]:
     if pre_le and post_le and post_le < pre_le:
         add("warning", "Low-energy lighting", f"Low-energy fittings dropped {pre_le} → {post_le}. Check data.")
 
-    # doors sanity
     pre_doors, post_doors = pre.get("doors_uninsulated"), post.get("doors_uninsulated")
     if pre_doors is not None and post_doors is not None:
         if post_doors < pre_doors - 2:
             add("info", "Doors", f"Uninsulated doors reduced {pre_doors} → {post_doors}. Were doors replaced/insulated?")
 
-    # insulation coherence
     pre_loft_mm, post_loft_mm = pre.get("loft_insulation_mm"), post.get("loft_insulation_mm")
     if pre_loft_mm is not None and post_loft_mm is not None and post_loft_mm < pre_loft_mm:
         add("warning", "Loft insulation", f"Thickness decreased {pre_loft_mm}mm → {post_loft_mm}mm. Check entry.")
 
-    # controls coherence
     if post.get("heating_controls_smart") and not post.get("main_heat_eff_pct"):
         add("warning", "Heating controls", "Smart controls marked but main system details missing. Add boiler/system data.")
 
-    # PV coherence
     if post.get("pv_present") and post.get("low_energy_lights") is None:
         add("info", "Solar PV", "PV present but lighting counts missing. Consider completing lighting data for SAP.")
     if pre.get("pv_present") and not post.get("pv_present"):
@@ -321,7 +273,7 @@ def compare_site_notes(pre: dict, post: dict) -> list[dict]:
 
 def gather(path: Path):
     raw = extract_text(path)
-    text = "\n".join(norm_lines(raw))
+    text = "\n".join([norm_ws(x) for x in raw.splitlines()])
     return {
         "summary": parse_summary(text),
         "measures": parse_numeric_measures(text),
@@ -331,6 +283,7 @@ def gather(path: Path):
     }
 
 # ====== Routes ======
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     if not is_authed(request):
@@ -363,30 +316,23 @@ async def compare(
     try:
         if not is_authed(request):
             return RedirectResponse("/", status_code=302)
-
         if not pre.filename or not post.filename:
             return HTMLResponse("<h3>Please attach both PRE and POST PDFs.</h3>", status_code=400)
 
-        # Save uploads
         pre_path = UPLOADS_DIR / f"pre_{pre.filename}"
         post_path = UPLOADS_DIR / f"post_{post.filename}"
         pre_path.write_bytes(await pre.read())
         post_path.write_bytes(await post.read())
 
-        # Parse
         pre_data = {"summary": {}, "measures": {}, "recs": {}, "notes": {}}
         post_data = {"summary": {}, "measures": {}, "recs": {}, "notes": {}}
         if not APP_SAFE:
             pre_data = gather(pre_path)
             post_data = gather(post_path)
 
-        # Override dates if provided
-        if pre_date:
-            pre_data["summary"]["process_date"] = pre_date
-        if post_date:
-            post_data["summary"]["process_date"] = post_date
+        if pre_date:  pre_data["summary"]["process_date"]  = pre_date
+        if post_date: post_data["summary"]["process_date"] = post_date
 
-        # Header block
         header = {
             "address": address or pre_data["summary"].get("address") or post_data["summary"].get("address") or "",
             "uprn": uprn or pre_data["summary"].get("uprn") or post_data["summary"].get("uprn") or "",
@@ -395,49 +341,32 @@ async def compare(
             "notes": notes,
         }
 
-        # Deltas
-        def delta(a, b):
-            if a is None or b is None:
-                return None
-            return b - a
-
+        def delta(a, b): return None if (a is None or b is None) else (b - a)
         diff = {
             "sap_change": delta(pre_data["summary"].get("sap_current"), post_data["summary"].get("sap_current")),
             "ei_change": delta(pre_data["summary"].get("ei_current"), post_data["summary"].get("ei_current")),
             "fuel_bill_change": delta(pre_data["summary"].get("fuel_bill"), post_data["summary"].get("fuel_bill")),
-            "recs": {},
-            "areas": {},
+            "recs": {}, "areas": {},
         }
-
         for n in sorted(set(list(pre_data["recs"].keys()) + list(post_data["recs"].keys()))):
             p, q = pick_status(pre_data["recs"].get(n, ""), post_data["recs"].get(n, ""))
             diff["recs"][n] = {"pre": p, "post": q}
 
         for label in sorted(set(list(pre_data["measures"].keys()) + list(post_data["measures"].keys()))):
-            a = pre_data["measures"].get(label)
-            b = post_data["measures"].get(label)
-            diff["areas"][label] = {"pre": a, "post": b, "delta": (None if (a is None or b is None) else b - a)}
+            a = pre_data["measures"].get(label); b = post_data["measures"].get(label)
+            def d(x,y):
+                if x is None or y is None: return None
+                return round(y - x, 2)
+            diff["areas"][label] = {"pre": a, "post": b, "delta": d(a, b)}
 
-        # QA flags
-        qa_flags = []
-        try:
-            qa_flags = compare_site_notes(pre_data.get("notes", {}) or {}, post_data.get("notes", {}) or {})
-        except Exception:
-            qa_flags = [{"level": "warning", "field": "QA", "message": "Site-notes QA skipped due to parsing error."}]
+        qa_flags = compare_site_notes(pre_data.get("notes", {}), post_data.get("notes", {}))
 
-        # Render
         now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
         html_str = TEMPLATES.get_template("report.html").render(
-            request=request,
-            now=now,
-            pre=pre_data,
-            post=post_data,
-            diff=diff,
-            header=header,
-            qa_flags=qa_flags,
+            request=request, now=now, pre=pre_data, post=post_data, diff=diff, header=header,
+            qa_flags=qa_flags
         )
 
-        # Save last report to disk for PDF
         token = secrets.token_hex(8)
         html_file = UPLOADS_DIR / f"report_{token}.html"
         html_file.write_text(html_str, encoding="utf-8")
@@ -448,7 +377,8 @@ async def compare(
     except Exception as e:
         return safe_error(e)
 
-@app.post("/pdf")
+# GET or POST so a simple link works
+@app.api_route("/pdf", methods=["GET", "POST"])
 async def pdf(request: Request):
     if not is_authed(request):
         return RedirectResponse("/", status_code=302)
@@ -459,26 +389,23 @@ async def pdf(request: Request):
         if not html_str:
             return HTMLResponse("<h3>No report available. Please generate a comparison first.</h3>", status_code=400)
 
-        # Convert to PDF (best-effort; Print → Save as PDF is a good fallback)
         pdf_bytes = bytearray()
         result = pisa.CreatePDF(src=html_str, dest=pdf_bytes)
         if result.err:
-            return HTMLResponse("<h3>PDF generation failed. Try browser Print → Save as PDF.</h3>", status_code=500)
+            return HTMLResponse("<h3>PDF generation failed. Try Print → Save as PDF.</h3>", status_code=500)
 
         return Response(bytes(pdf_bytes), media_type="application/pdf", headers={
-            "Content-Disposition": "attachment; filename=amicoeco_comparison.pdf"
+            "Content-Disposition": "attachment; filename=epc_comparison.pdf"
         })
     except Exception as e:
         return safe_error(e)
 
 @app.get("/health")
-async def health():
-    return {"ok": True}
+async def health(): return {"ok": True}
 
 @app.get("/__tail__", response_class=PlainTextResponse)
 async def tail_log(lines: int = 200):
     log_path = BASE / "app.log"
-    if not log_path.exists():
-        return "No app.log yet."
+    if not log_path.exists(): return "No app.log yet."
     data = log_path.read_text(encoding="utf-8", errors="ignore").splitlines()
     return "\n".join(data[-max(1, min(lines, 2000)):])
